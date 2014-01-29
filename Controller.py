@@ -14,6 +14,12 @@ import time
 from Point3d import Point3d as Point3d
 
 
+class ControllerExit(Exception):
+
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+
+
 class Controller(object):
     """
     Class to receive Gcode Commands and Statements
@@ -46,7 +52,12 @@ class Controller(object):
         # motors dict
         self.motors = {}
         self.spindle = None
-        self.speed = 0.0
+        # Feed Rate
+        self.feed = 0
+        # Speed
+        self.speed = 0
+        # Tool
+        self.tool = 1
         # pygame specificas to draw correct
         self.pygame_zoom = 1
         self.pygame_draw = True
@@ -73,6 +84,21 @@ class Controller(object):
         axis should be named with capitalized letters of X, Y, Z"""
         assert axis in ("X", "Y", "Z")
         self.motors[axis] = motor_object
+
+    def F(self, feed_str):
+        """Set Feed Rate"""
+        #logging.info("G00 called with %s", args)
+        self.feed = float(feed_str)
+
+    def S(self, speed_str):
+        """Set Feed Rate"""
+        #logging.info("G00 called with %s", args)
+        self.speed = int(speed_str)
+
+    def T(self, tool_str):
+        """Set Feed Rate"""
+        #logging.info("G00 called with %s", args)
+        self.tool = int(tool_str)
 
     def G00(self, *args):
         """rapid motion with maximum speed"""
@@ -165,7 +191,7 @@ class Controller(object):
             motor.unhold()
         # stop spindle
         self.spindle.unhold()
-        raise StandardError("M02 received, end of program")
+        raise ControllerExit("M02 received, end of program")
 
     def M3(self, *args):
         logging.debug("M3 start the spindle clockwise at speed S called with %s", args)

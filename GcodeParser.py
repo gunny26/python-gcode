@@ -15,6 +15,7 @@ except ImportError:
 import re
 import pygame
 # own modules
+from Controller import ControllerExit as ControllerExit
 from Motor import BipolarStepperMotor as BipolarStepperMotor
 from Motor import LaserMotor as LaserMotor
 from Spindle import Spindle as Spindle
@@ -44,13 +45,9 @@ class Parser(object):
             self.draw_grid()
         # precompile regular expressions
         self.rex_g = {}
-        self.g_params = ("X", "Y", "Z", "F", "I", "J", "K", "P", "R")
+        self.g_params = ("X", "Y", "Z", "I", "J", "K", "P", "R", "K", "U", "V", "W", "A", "B", "C")
         for g_param in self.g_params:
-            self.rex_g[g_param] = re.compile("%s([\+\-]?[\d\.]+)\D?" % g_param)
-        self.rex_m = {}
-        self.m_params = ("S", )
-        for m_param in self.m_params:
-            self.rex_m[m_param] = re.compile("%s([\+\-]?[\d\.]+)\D?" % m_param)
+            self.rex_g[g_param] = re.compile("(%s[\+\-]?[\d\.]+)\D?" % g_param)
 
     def draw_grid(self):
         """
@@ -74,24 +71,6 @@ class Parser(object):
         pygame.draw.line(self.surface, color, (self.surface.get_width() - 10, 0), (self.surface.get_width() - 10, self.surface.get_height()))
         pygame.draw.line(self.surface, color, (0, self.surface.get_height() - 10), (self.surface.get_width(), self.surface.get_height() - 10))
 
-    def parse_g_params(self, line):
-        """parse known Parameters to G-Commands"""
-        result = {}
-        for parameter in self.g_params:
-            match = self.rex_g[parameter].search(line)
-            if match:
-                result[parameter] = float(match.group(1))
-        return(result)
-
-    def parse_m_params(self, line):
-        """parse known Parameters to M-Commands"""
-        result = {}
-        for parameter in self.m_params:
-            match = self.rex_m[parameter].search(line)
-            if match:
-                result[parameter] = float(match.group(1))
-        return(result)
-
     def caller(self, methodname=None, args=None):
         """
         calls G- or M- code Method
@@ -100,13 +79,11 @@ class Parser(object):
 
         fo example G02 results in call of self.controller.G02(args)
         """
-        # logging.info("Methodname = %s" % methodname)
-        if methodname is None:
-            methodname = self.last_g_code
-        else:
-            self.last_g_code = methodname
+        logging.info("calling %s(%s)", methodname, args)
         method_to_call = getattr(self.controller, methodname)
         method_to_call(args)
+        if methodname[0] == "G":
+            self.last_g_code = methodname
 
     def read(self):
         """
@@ -123,36 +100,35 @@ class Parser(object):
                 continue
             # start of parsing
             logging.info("-" * 80)
-            if line[0] == "(":
-                logging.info("Comment: %s", line[1:])
+            comment = re.match("^\((.*)\)?$", line)
+            if comment is not None:
+                logging.info(comment.group(0))
                 continue
             logging.info("parsing %s", line)
+            # first determine if this line is something of G-Command or M-Command
+            # if that line is after a modal G or M Code, there are only 
+            # G Parameters ("X", "Y", "Z", "F", "I", "J", "K", "P", "R")
+            # M Parameters ("S")
             # search for M-Codes
-            mcodes = re.findall("([m|M][\d|\.]+\D?)", line)
-            if len(mcodes) == 1:
-                mcode = mcodes[0].strip()
-                parameters = self.parse_m_params(line)
-                self.caller(mcode, parameters)
-                continue
-            elif len(mcodes) > 1:
-                logging.error("There should only be one M-Code in one line")
-            # search for G-Codes
-            gcodes = re.findall("([g|G][\d|\.]+\D)", line)
-            if len(gcodes) > 1:
-                logging.debug("Multiple G-Codes on one line detected")
-                for gcode in gcodes:
-                    gcode = gcode.strip()
-                    logging.info("Found %s", gcode)
-                    self.caller(gcode)
-            elif len(gcodes) == 1:
-                gcode = gcodes[0].strip()
-                logging.debug("Only one G-Code %s detected", gcode)
-                parameters = self.parse_g_params(line)
-                self.caller(gcode, parameters)
-            else:
-                logging.debug("No G-Code on this line assuming last modal G-Code %s" % self.last_g_code)
-                result = self.parse_g_params(line)
-                self.caller(methodname=None, args=result)
+            # Feed Rate has precedence over G
+            params = {}
+            for parameter in self.g_params:
+                match = self.rex_g[parameter].search(line)
+                if match:
+                    params[parameter] = float(match.group(1)[1:])
+                    line = line.replace(match.group(1), "")
+            codes = re.findall("([F|S|T][\d|\.]+)\D?", line)
+            if codes is not None:
+                for code in codes:
+                    self.caller(code[0], code[1:])
+                    line = line.replace(code, "")
+            gcodes = re.findall("([G|M][\d|\.]+)\D?", line)
+            if (len(params) > 0) and (len(gcodes) == 0):
+                gcodes.append(self.last_g_code)
+            for code in gcodes:
+                self.caller(code, params)
+                line = line.replace(code, "")
+            logging.info("remaining line %s", line)
             # pygame drawing if surface is available
             if self.surface is not None:
                 pygame.display.flip()
@@ -190,12 +166,16 @@ def main():
         surface = pygame.display.set_mode((530, 530))
         surface.fill((0, 0, 0))
         pygame.display.flip()
+        if len(sys.argv) == 1:
+            sys.argv.append("examples/Coaster.ngc")
         parser = Parser(surface=surface, filename=sys.argv[1])
         parser.read()
-    except Exception, exc:
+    except ControllerExit, exc:
+        logging.info(exc)
+    except StandardError, exc:
         logging.exception(exc)
-        safe_position()
-        GPIO.cleanup()
+    safe_position()
+    GPIO.cleanup()
     pygame.quit()
 
 if __name__ == "__main__":
