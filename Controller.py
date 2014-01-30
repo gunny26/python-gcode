@@ -20,6 +20,55 @@ class ControllerExit(Exception):
         Exception.__init__(self, *args)
 
 
+class ControllerCommandNotImplemented(Exception):
+
+    def __init__(self, *args):
+        Exception.__init__(self, *args)
+
+
+class ControllerStats(object):
+    """
+    Object to hold some statistical informations about Controller
+    should be called on every step made
+    """
+
+    def __init__(self):
+        """__init__"""
+        self.steps = 0
+        self.max_x = 0.0
+        self.min_x = 0.0
+        self.max_y = 0.0
+        self.min_y = 0.0
+        self.max_z = 0.0
+        self.min_z = 0.0
+        self.start_time = time.time()
+        self.duration = 0.0
+        self.avg_step_time = 0.0
+
+    def update(self, controller_obj):
+        """update internal stats counters"""
+        # store min / max for X/Y/Z Axis
+        if controller_obj.position.X > self.max_x:
+            self.max_x = controller_obj.position.X
+        if controller_obj.position.X < self.min_x:
+            self.min_x = controller_obj.position.X
+        if controller_obj.position.Y > self.max_y:
+            self.max_y = controller_obj.position.Y
+        if controller_obj.position.Y < self.min_y:
+            self.min_y = controller_obj.position.Y
+        if controller_obj.position.Z > self.max_z:
+            self.max_z = controller_obj.position.Z
+        if controller_obj.position.X < self.min_z:
+            self.min_z = controller_obj.position.Z
+        # store steps and time
+        self.steps += 1
+        self.duration = time.time() - self.start_time
+        self.avg_step_time = self.duration / self.steps
+
+    def __str__(self):
+        return(str(self.__dict__))
+
+
 class Controller(object):
     """
     Class to receive Gcode Commands and Statements
@@ -29,7 +78,7 @@ class Controller(object):
     Spindle -> could be also a laser or something else
     """
 
-    def __init__(self, surface, resolution=1.0, default_speed=1.0, delay=0.0):
+    def __init__(self, resolution=1.0, default_speed=1.0, delay=0.0):
         """
         initialize Controller Object
         @param
@@ -39,7 +88,6 @@ class Controller(object):
         """
         self.default_speed = default_speed
         self.resolution = resolution
-        self.surface = surface
         self.delay = float(delay) / 1000 # in ms
         # initialize position
         self.position = Point3d(0, 0, 0)
@@ -66,6 +114,14 @@ class Controller(object):
         self.angle_step = math.pi / 180 
         self.angle_step_sin = math.sin(self.angle_step)
         self.angle_step_cos = math.cos(self.angle_step)
+        # statistics
+        self.stats = ControllerStats()
+
+    def set_gui_cb(self, gui_cb):
+        """
+        GUI Callback method, should be called after every step to inform GUI about changes
+        """
+        self.gui_cb = gui_cb
 
     def get_position(self):
         """return own position"""
@@ -191,6 +247,7 @@ class Controller(object):
             motor.unhold()
         # stop spindle
         self.spindle.unhold()
+        logging.error(self.stats)
         raise ControllerExit("M02 received, end of program")
 
     def M3(self, *args):
@@ -224,6 +281,18 @@ class Controller(object):
 
     def M9(self, *args):
         logging.debug("M9 turn all collant off called with %s", args)
+
+    def M30(self, *args):
+        logging.debug("M30 end the program called with %s", args)
+        # back to origin
+        self.__goto(Point3d(0, 0, 0))
+        # unhold everything
+        for _, motor in self.motors.items():
+            motor.unhold()
+        # stop spindle
+        self.spindle.unhold()
+        logging.error(self.stats)
+        raise ControllerExit("M30 received, end of program")
 
     def __get_center(self, target, radius):
         """get center from target on circle and radius given"""
@@ -356,6 +425,7 @@ class Controller(object):
                 continue
             direction = self.get_direction(step)
             self.motors[axis].move_float(direction, abs(step))
+        self.stats.update(self)
 
     def __goto(self, target):
         """
@@ -401,14 +471,7 @@ class Controller(object):
         #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
 
     def pygame_update(self, newposition):
-        """draw on surface if available"""
-        if self.pygame_draw:
-            start = (self.resolution* self.position.X, self.resolution * self.position.Y)
-            stop = (self.resolution * newposition.X, self.resolution * newposition.Y)
-            pygame.draw.line(self.surface, self.pygame_color, start, stop, 1)
-            # set red dot at motor position
-            self.surface.set_at((self.motors["X"].position, self.motors["Y"].position), pygame.Color(255, 0, 0, 255))
-            pygame.display.flip()
+        self.gui_cb(newposition)
 
     def set_speed(self, *args):
         """set speed, if data["F"] is given, defaults to default_speed if not specified"""

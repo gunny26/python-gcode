@@ -87,7 +87,7 @@ class LaserMotor(Motor):
         Motor.__init__(self, max_position, min_position, delay)
         self.laser_pin = laser_pin
         GPIO.setup(self.laser_pin, GPIO.OUT)
-        GPIO.setup(self.laser_pin, 0)
+        self.unhold()
  
     def _move(self, direction):
         """move number of full integer steps"""
@@ -101,6 +101,7 @@ class LaserMotor(Motor):
     def unhold(self):
         """power off"""
         logging.info("Power off laser")
+        GPIO.output(self.laser_pin, 0)
 
 
 class BipolarStepperMotor(Motor):
@@ -159,6 +160,7 @@ class BipolarStepperMotor(Motor):
             GPIO.setup(pin, GPIO.OUT)
             GPIO.setup(pin, 0)
         self.num_sequence = len(self.SEQUENCE)
+        self.unhold()
 
     def _move(self, direction):
         """
