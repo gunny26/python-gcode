@@ -13,6 +13,7 @@ except ImportError:
     logging.error("Semms not to be a RaspberryPi")
     from  FakeGPIO import FakeGPIO as GPIO
 # own modules
+from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
@@ -47,8 +48,8 @@ def main():
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        # gui = GcodeGuiPygame(automatic=True)
-        gui = GcodeGuiConsole()
+        gui = GcodeGuiPygame(automatic=True)
+        # gui = GcodeGuiTkinter()
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
         gui.set_parser(parser)
