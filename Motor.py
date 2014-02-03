@@ -80,6 +80,7 @@ class Motor(object):
         return(self.float_position)
 
 
+
 class LaserMotor(Motor):
     """Laser Motor, reactive if axis moves negative"""
 
@@ -181,3 +182,162 @@ class BipolarStepperMotor(Motor):
         """
         for pin in self.coils:
             GPIO.output(pin, False)
+
+class UnipolarStepperMotor(Motor):
+    """
+    Class to represent a bipolar stepper motor
+    it could only with on one dimension, forward or backwards
+
+    cloil -> set(a1, a2, b1, b2) of GPIO Pins where these connectors are patched
+    delay -> int(milliseconds to wait between moves
+    max_position -> int(maximum position) is set to safe value of 1
+    min_position -> int(minimum position) is set to 0
+        b1
+    a1      a1
+        b2
+
+    following seuqnece is possible (a1, a2, b1, b2)
+
+    low torque mode
+    1 0 0 0 a1
+    0 0 1 0 b1
+    0 1 0 0 a2
+    0 0 0 1 b2
+    
+    high torque mode - full step mode
+    1 0 1 0 between a1/b1
+    0 1 1 0 between b1/a2
+    0 1 0 1 between a2/b2
+    1 0 0 1 between b2/a1
+
+    mixed torque mode - half step mode
+    1 0 0 0 a1
+    1 0 1 0 between a1/b1
+    0 0 1 0 b1
+    0 1 1 0 between b1/a2
+    0 1 0 0 a2
+    0 1 0 1 between a2/b2
+    0 0 0 1 b2
+    1 0 0 1 between b2/a1
+
+    """
+    # low torque mode - also low power as only one coil is powered
+    SEQUENCE_LOW = ((1,0,0,0), (0,0,1,0), (0,1,0,0), (0,0,0,1))
+    # high torque - full step mode
+    SEQUENCE_HIGH = ((1,0,1,0), (0,1,1,0), (0,1,0,1), (1,0,0,1))
+    # mixed torque - half step mode
+    SEQUENCE_MIXED = ((1,0,0,0), (1,0,1,0), (0,0,1,0), (0,1,1,0), (0,1,0,0), (0,1,0,1), (0,0,0,1), (1,0,0,1))
+    # ok
+    SEQUENCE = SEQUENCE_MIXED
+
+    def __init__(self, coils, max_position, min_position, delay):
+        """init"""
+        Motor.__init__(self, max_position, min_position, delay)
+        self.coils = coils
+        # define coil pins as output
+        for pin in self.coils:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.setup(pin, 0)
+        self.num_sequence = len(self.SEQUENCE)
+        self.unhold()
+
+    def _move(self, direction):
+        """
+        move to given direction number of steps, its relative
+        delay_faktor could be set, if this Motor is connected to a controller
+        which moves also another Motor
+        """
+        phase = self.SEQUENCE[self.position % self.num_sequence]
+        counter = 0
+        for pin in self.coils:
+            GPIO.output(pin, phase[counter])
+            counter += 1
+        self.position += direction
+
+    def unhold(self):
+        """
+        sets any pin of motor to low, so no power is needed
+        """
+        for pin in self.coils:
+            GPIO.output(pin, False)
+    
+    def get_phase(self):
+        """returns actual phase in sequence"""
+        return(self.SEQUENCE[self.position % self.num_sequence])
+
+class UnipolarStepperMotorTwoWire(Motor):
+    """
+    Class to represent a bipolar stepper motor
+    it could only with on one dimension, forward or backwards
+
+    cloil -> set(a1, a2, b1, b2) of GPIO Pins where these connectors are patched
+    delay -> int(milliseconds to wait between moves
+    max_position -> int(maximum position) is set to safe value of 1
+    min_position -> int(minimum position) is set to 0
+        b1
+    a1      a1
+        b2
+
+    following seuqnece is possible (a1, a2, b1, b2)
+
+    low torque mode
+    1 0 0 0 a1
+    0 0 1 0 b1
+    0 1 0 0 a2
+    0 0 0 1 b2
+    
+    high torque mode - full step mode
+    1 0 1 0 between a1/b1
+    0 1 1 0 between b1/a2
+    0 1 0 1 between a2/b2
+    1 0 0 1 between b2/a1
+
+    mixed torque mode - half step mode
+    1 0 0 0 a1
+    1 0 1 0 between a1/b1
+    0 0 1 0 b1
+    0 1 1 0 between b1/a2
+    0 1 0 0 a2
+    0 1 0 1 between a2/b2
+    0 0 0 1 b2
+    1 0 0 1 between b2/a1
+
+    """
+    # with two wire, there is only one sequence possible, results in full step mode
+    SEQUENCE = ((1,0), (1,1), (0,1), (0,0))
+
+    def __init__(self, coils, max_position, min_position, delay):
+        """init"""
+        Motor.__init__(self, max_position, min_position, delay)
+        assert len(coils) == 2
+        self.coils = coils
+        # define coil pins as output
+        for pin in self.coils:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.setup(pin, 0)
+        self.num_sequence = len(self.SEQUENCE)
+        self.unhold()
+
+    def _move(self, direction):
+        """
+        move to given direction number of steps, its relative
+        delay_faktor could be set, if this Motor is connected to a controller
+        which moves also another Motor
+        """
+        phase = self.SEQUENCE[self.position % self.num_sequence]
+        counter = 0
+        for pin in self.coils:
+            GPIO.output(pin, phase[counter])
+            counter += 1
+        self.position += direction
+
+    def unhold(self):
+        """
+        sets any pin of motor to low, so no power is needed
+        """
+        for pin in self.coils:
+            GPIO.output(pin, False)
+    
+    def get_phase(self):
+        """returns actual phase in sequence"""
+        return(self.SEQUENCE[self.position % self.num_sequence])
