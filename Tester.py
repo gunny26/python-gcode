@@ -11,7 +11,7 @@ coilsa = (23, 24, 25, 8)
 coilsb = (27, 22, 10, 9)
 max_position = 9999
 min_position = 0
-delay = 0.008
+delay = 0.015
 motora = Motor(coilsa, max_position, min_position, delay)
 motorb = Motor(coilsb, max_position, min_position, delay)
 try:

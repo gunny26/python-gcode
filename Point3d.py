@@ -61,6 +61,10 @@ class Point3d(object):
         """return length of vector"""
         return(math.sqrt(self.X**2 + self.Y**2 + self.Z**2))
 
+    def lengthXY(self):
+        """return length of vector"""
+        return(math.sqrt(self.X**2 + self.Y**2))
+
     def unit(self):
         """
         return unit vector of self

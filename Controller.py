@@ -428,7 +428,6 @@ class Controller(object):
         """
         #logging.debug("__step called with %s", args)
         data = args[0]
-        data = self.transformer.transform(data)
         for axis in ("X", "Y", "Z"):
             step = data.__dict__[axis]
             assert -1.0 <= step <= 1.0
@@ -455,6 +454,8 @@ class Controller(object):
         # steps on each axes to move
         # scale from mm to steps
         move_vec_steps = move_vec * self.resolution
+        # maybe some tranformation and scaling ?
+        move_vec_steps = self.transformer.transform(move_vec_steps)
         move_vec_steps_unit = move_vec_steps.unit()
         #logging.error("move_vec_steps_unit=%s", move_vec_steps_unit)
         #logging.error("scaled %s mm to %s steps", move_vec, move_vec_steps)
@@ -477,7 +478,7 @@ class Controller(object):
         #    motor_position, drift, drift.length(), self.spindle.get_state())
         # drift should not be more than 1 step
         # drift could be in any direction 0.999...
-        assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
+        # assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
         #logging.info("Unit-Drift: Motor: %s; Drift %s; Spindle: %s", \
         #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
 
