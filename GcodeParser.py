@@ -22,6 +22,7 @@ from Motor import BipolarStepperMotor as BipolarStepperMotor
 from Motor import LaserMotor as LaserMotor
 from Spindle import Spindle as Spindle
 from Controller import Controller as Controller
+from Transformer import Transformer as Transformer
 
 def main(): 
     # bring GPIO to a clean state
@@ -40,6 +41,7 @@ def main():
         controller.add_motor("Y", BipolarStepperMotor(coils=(24, 25, 7, 8), max_position=512, min_position=0, delay=0.02))
         controller.add_motor("Z", LaserMotor(laser_pin=14, min_position=-10000, max_position=10000, delay=0.0))
         controller.add_spindle(Spindle())
+        controller.add_transformer(Transformer())
         # create parser
         logging.info("Creating Parser Object")
         if len(sys.argv) == 1:

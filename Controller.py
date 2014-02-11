@@ -116,6 +116,8 @@ class Controller(object):
         self.angle_step_cos = math.cos(self.angle_step)
         # statistics
         self.stats = ControllerStats()
+        # optional a tranforming function
+        self.transformer = None
 
     def set_gui_cb(self, gui_cb):
         """
@@ -140,6 +142,10 @@ class Controller(object):
         axis should be named with capitalized letters of X, Y, Z"""
         assert axis in ("X", "Y", "Z")
         self.motors[axis] = motor_object
+
+    def add_transformer(self, transformer):
+        """add transformer"""
+        self.transformer = transformer
 
     def F(self, feed_str):
         """Set Feed Rate"""
@@ -415,9 +421,14 @@ class Controller(object):
         method to initialize single steps on the different axis
         the size here is already steps, not units as mm or inches
         scaling is done in __goto
+
+        theres the point to implement any tranforming about linear motion,
+        e.g. for makerangelo, there will be a tranforming from
+        carthesian coordinate system to something others
         """
         #logging.debug("__step called with %s", args)
         data = args[0]
+        data = self.transformer.transform(data)
         for axis in ("X", "Y", "Z"):
             step = data.__dict__[axis]
             assert -1.0 <= step <= 1.0
