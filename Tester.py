@@ -5,20 +5,23 @@ logging.basicConfig(level=logging.DEBUG)
 import RPi.GPIO as GPIO
 from Motor import UnipolarStepperMotor as Motor
 
+def gpio_state():
+    for gpio in (14, 15, 9, 7):
+        GPIO.setup(gpio, GPIO.IN)
+        print "%s = %s" % (gpio, GPIO.input(gpio))
+        GPIO.setup(gpio, GPIO.OUT)
+        GPIO.output(gpio, 0) 
+
+
+
 GPIO.cleanup()
 GPIO.setmode(GPIO.BCM)
-coilsa = (23, 24, 25, 8)
-coilsb = (27, 22, 10, 9)
-max_position = 9999
-min_position = 0
-delay = 0.015
-motora = Motor(coilsa, max_position, min_position, delay)
-motorb = Motor(coilsb, max_position, min_position, delay)
+motor = Motor((14, 15, 9, 7), 99999, -99999, 0.005)
 try:
     while True:
         # logging.debug("Step %s", motor.get_phase())
-        motora.move_float(1, 1.0)
-        motorb.move_float(-1, 1.0)
+        motor.move_float(1, 1.0)
+        #gpio_state()
 except KeyboardInterrupt:
     pass
 GPIO.cleanup()
