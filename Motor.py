@@ -265,6 +265,95 @@ class UnipolarStepperMotor(Motor):
         """returns actual phase in sequence"""
         return(self.SEQUENCE[self.position % self.num_sequence])
 
+class UnipolarStepperMotorOnOff(Motor):
+    """
+    Same as other motors, but with only two positions
+
+    something positive = goto position ON
+    zero or negative = goto position OFF
+
+    """
+    # low torque mode - also low power as only one coil is powered
+    SEQUENCE_LOW = ((1,0,0,0), (0,0,1,0), (0,1,0,0), (0,0,0,1))
+    # high torque - full step mode
+    SEQUENCE_HIGH = ((1,0,1,0), (0,1,1,0), (0,1,0,1), (1,0,0,1))
+    # mixed torque - half step mode
+    SEQUENCE_MIXED = ((1,0,0,0), (1,0,1,0), (0,0,1,0), (0,1,1,0), (0,1,0,0), (0,1,0,1), (0,0,0,1), (1,0,0,1))
+    # ok
+    SEQUENCE = SEQUENCE_MIXED
+
+    def __init__(self, coils, on_position, on_direction, delay):
+        """init"""
+        Motor.__init__(self, on_position, 0, delay)
+        self.coils = coils
+        self.on_position = on_position
+        self.on_direction = on_direction
+        # define coil pins as output
+        for pin in self.coils:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.setup(pin, 0)
+        self.state = 0
+        self.num_sequence = len(self.SEQUENCE)
+        self.unhold()
+
+    def move_float(self, direction, float_step):
+        """
+        this method is called from controller
+        float_step is bewtween 0.0 < 1.0
+        """
+        #logging.debug("move_float called with %d, %f", direction, float_step)
+        assert type(direction) == int
+        assert (direction == -1) or (direction == 1)
+        assert 0.0 <= float_step <= 1.0
+        logging.error("state: %s, float_position: %s, position: %s", self.state, self.float_position, self.position)
+        # next step should not before self.last_step_time + self.delay
+        time_gap = self.last_step_time + self.delay - time.time()
+        if time_gap > 0:
+            time.sleep(time_gap)
+        self.float_position += (float_step * direction)
+        # if position > 0 and now in OFF position
+        if self.float_position > 0.0 and self.state == 0:
+            for _ in range(self.on_position):
+                self._move(self.on_direction)
+                time.sleep(self.delay)
+            # goto position ON
+            self.state = 1
+        # otherwise
+        if self.float_position == 0.0 and self.state == 1:
+            for _ in range(self.on_position):
+                self._move(-self.on_direction)
+                time.sleep(self.delay)
+            # goto position OFF
+            self.state = 0
+        logging.error("state: %s, float_position: %s, position: %s", self.state, self.float_position, self.position)
+        # remember last_step_time
+        self.last_step_time = time.time()
+
+    def _move(self, direction):
+        """
+        move to given direction number of steps, its relative
+        delay_faktor could be set, if this Motor is connected to a controller
+        which moves also another Motor
+        """
+        phase = self.SEQUENCE[self.position % self.num_sequence]
+        counter = 0
+        for pin in self.coils:
+            GPIO.output(pin, phase[counter])
+            counter += 1
+        self.position += direction
+
+    def unhold(self):
+        """
+        sets any pin of motor to low, so no power is needed
+        """
+        for pin in self.coils:
+            GPIO.output(pin, False)
+    
+    def get_phase(self):
+        """returns actual phase in sequence"""
+        return(self.SEQUENCE[self.position % self.num_sequence])
+
+
 class UnipolarStepperMotorTwoWire(Motor):
     """
     Class to represent a bipolar stepper motor
