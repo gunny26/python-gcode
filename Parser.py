@@ -27,6 +27,8 @@ class Parser(object):
         # initial values
         self.controller = None
         self.gui_cb = None
+        # save actual commands on this line
+        self.command = None
 
     def set_controller(self, controller):
         """set controller object, must be done prior to parse() call"""
@@ -48,6 +50,8 @@ class Parser(object):
         fo example G02 results in call of self.controller.G02(args)
         """
         logging.info("calling %s(%s)", methodname, args)
+        self.command = "%s(%s)" % (methodname, args)
+        self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
         method_to_call(args)
         if methodname[0] == "G":

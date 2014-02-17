@@ -19,6 +19,10 @@ class FakeGPIO(object):
         pass
 
     @staticmethod
+    def input(*args):
+        return(0)
+
+    @staticmethod
     def cleanup(*args):
         pass
 

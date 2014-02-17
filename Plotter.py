@@ -16,6 +16,7 @@ except ImportError:
 # own modules
 #from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
+from PlotterSimulator import PlotterSimulator as PlotterSimulator
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
@@ -54,21 +55,22 @@ def main():
         # create parser
         logging.info("Creating Parser Object")
         if len(sys.argv) == 1:
-            sys.argv.append("examples/Coaster.ngc")
+            sys.argv.append("examples/tiroler_adler.ngc")
         parser = Parser(filename=sys.argv[1])
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
+        gui = PlotterSimulator(automatic=True)
         # gui = GcodeGuiPygame(automatic=True)
         # gui = GcodeGuiTkinter()
-        gui = GcodeGuiConsole()
+        # gui = GcodeGuiConsole()
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
         gui.set_parser(parser)
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move stepper motors to origin (0, 0, 0)")
-        key = raw_input("Press any KEY when done")
+        #key = raw_input("Press any KEY when done")
         parser.read()
     except ControllerExit, exc:
         logging.info(exc)
