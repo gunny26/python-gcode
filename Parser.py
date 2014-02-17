@@ -51,6 +51,7 @@ class Parser(object):
         """
         logging.info("calling %s(%s)", methodname, args)
         self.command = "%s(%s)" % (methodname, args)
+        # update gui object
         self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
         method_to_call(args)
@@ -101,5 +102,3 @@ class Parser(object):
                 self.caller(code, params)
                 line = line.replace(code, "")
             logging.info("remaining line %s", line)
-            # update gui object
-            self.gui_cb()

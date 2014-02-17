@@ -45,11 +45,11 @@ def main():
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(2, 3, 4, 27), max_position=9999, min_position=-9999, delay=0.02))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(23, 24, 25, 8), max_position=9999, min_position=-9999, delay=0.02))
+        controller.add_motor("X", UnipolarStepperMotor(coils=(2, 3, 4, 27), max_position=9999, min_position=-9999, delay=0.002))
+        controller.add_motor("Y", UnipolarStepperMotor(coils=(23, 24, 25, 8), max_position=9999, min_position=-9999, delay=0.002))
         # controller.add_motor("Z", UnipolarStepperMotorOnOff(coils=(14, 15, 9, 7), on_position=10, on_direction=0, delay=0.003))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(14, 15, 9, 7), max_position=20, min_position=0, delay=0.003))
-        # controller.add_motor("Z", Motor(min_position=-10000, max_position=10000, delay=0.0))
+        # controller.add_motor("Z", UnipolarStepperMotor(coils=(14, 15, 9, 7), max_position=20, min_position=0, delay=0.003))
+        controller.add_motor("Z", Motor(min_position=-10000, max_position=10000, delay=0.0))
         controller.add_spindle(Spindle())
         controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=20.0))
         # create parser
