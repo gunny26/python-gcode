@@ -3,7 +3,16 @@
 #
 # parse Gcode
 #
+"""
+inspired by instructable project
 
+Module to control a two axis laser engraver
+X/Y stepper motor controlled transport of laser head on Z axis
+if Z is non-zero laser is powered on
+
+alternatively laser could also trigger with spindle,
+but your gcode has to support this
+"""
 import sys
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
@@ -15,7 +24,9 @@ except ImportError:
 # own modules
 #from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
-from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
+#from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
+from LaserSimulator import LaserSimulator as LaserSimulator
+# from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
 from Motor import BipolarStepperMotor as BipolarStepperMotor
@@ -25,41 +36,42 @@ from Controller import Controller as Controller
 from Transformer import Transformer as Transformer
 
 def main(): 
+    if len(sys.argv) == 1:
+        sys.argv.append("examples/tiroler_adler.ngc")
     # bring GPIO to a clean state
     GPIO.cleanup()
     GPIO.setmode(GPIO.BCM)
     try:
-        logging.info("Initialize GPIO Modes")
+        logging.info("Initialize GPIO")
+        # enable pin for L293D IC
         GPIO.setup(23, GPIO.OUT)
         GPIO.output(23, 1)
+        # laser power off
         GPIO.setup(14, GPIO.OUT)
         GPIO.output(14, 0)
         # build our controller
         logging.info("Creating Controller Object")
         controller = Controller(resolution=512/36, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", BipolarStepperMotor(coils=(4, 2, 27, 22), max_position=512, min_position=0, delay=0.02))
-        controller.add_motor("Y", BipolarStepperMotor(coils=(24, 25, 7, 8), max_position=512, min_position=0, delay=0.02))
+        controller.add_motor("X", BipolarStepperMotor(coils=(4, 2, 27, 22), max_position=512, min_position=0, delay=0.0))
+        controller.add_motor("Y", BipolarStepperMotor(coils=(24, 25, 7, 8), max_position=512, min_position=0, delay=0.0))
         controller.add_motor("Z", LaserMotor(laser_pin=14, min_position=-10000, max_position=10000, delay=0.0))
         controller.add_spindle(Spindle())
         controller.add_transformer(Transformer())
         # create parser
         logging.info("Creating Parser Object")
-        if len(sys.argv) == 1:
-            sys.argv.append("examples/Coaster.ngc")
         parser = Parser(filename=sys.argv[1])
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        # gui = GcodeGuiPygame(automatic=True)
-        # gui = GcodeGuiTkinter()
-        gui = GcodeGuiConsole()
+        gui = LaserSimulator(automatic=True, zoom=10.0)
+        # gui = GcodeGuiConsole()
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
         gui.set_parser(parser)
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move stepper motors to origin (0, 0, 0)")
-        key = raw_input("Press any KEY when done")
+        #key = raw_input("Press any KEY when done")
         parser.read()
     except ControllerExit, exc:
         logging.info(exc)

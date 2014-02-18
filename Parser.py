@@ -3,11 +3,12 @@
 #
 # parse Gcode
 #
-
+"""
+Module to parse Gcode from File
+"""
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import re
-# own modules
 
 
 class Parser(object):
@@ -49,7 +50,7 @@ class Parser(object):
 
         fo example G02 results in call of self.controller.G02(args)
         """
-        logging.info("calling %s(%s)", methodname, args)
+        logging.debug("calling %s(%s)", methodname, args)
         self.command = "%s(%s)" % (methodname, args)
         # update gui object
         self.gui_cb()
@@ -101,4 +102,6 @@ class Parser(object):
             for code in gcodes:
                 self.caller(code, params)
                 line = line.replace(code, "")
-            logging.info("remaining line %s", line)
+            # remaining line should be of no interest
+            remaining_line = line.strip()
+            # logging.info("remaining line %s", line)

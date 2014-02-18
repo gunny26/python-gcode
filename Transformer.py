@@ -4,17 +4,22 @@
 # parse Gcode
 #
 """
-Transforms Steps
+Classes to Transfor motions in X/Y/Z to other dimensions
 """
-
 import math
 import logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
+# own modules
 from Point3d import Point3d as Point3d
 
 
 class Transformer(object):
-    """class to transfor from motor steps to other steps"""
+    """
+    class to transform from X/Y motion to other scales or dimensions
+    this is the simple pass-through version, no modification is done to the
+    motion values
+    this class is also the base class for every custom Transformer
+    """
 
 
     def __init__(self, scale=1.0):
@@ -37,21 +42,30 @@ class PlotterTransformer(Transformer):
         self.width = width
         self.heigth = heigth
         self.scale = scale
-        # length on origin, which is the middle of the plane
+        # the zero positon is in bottom middle
         self.zero = math.sqrt((self.width / 2) ** 2 + (self.heigth / 2) ** 2)
-        self.A = Point3d(-self.width / 2, -self.heigth / 2)
-        self.B = Point3d(self.width / 2, -self.heigth / 2)
+        # Motor A is positioned in upper left corner
+        self.motor_A = Point3d(-self.width / 2, -self.heigth / 2)
+        # Motor B is positioned in upper right corner
+        self.motor_B = Point3d(self.width / 2, -self.heigth / 2)
+
+    def get_motor_A(self):
+        return(self.motor_A)
+
+    def get_motor_B(self):
+        return(self.motor_B)
 
     def transform(self, data):
         """
-        data is a unit vector in carthesian system
-        we transfor this motion into length for plotter
+        data is a unit vector in R3
+        from X/Y/Z Motions this fuction translates to a/b length for plotter
+        z axis is ignored for transformation, and left unchanged
         """
         #logging.debug("__step called with %s", args)
         # ignore Z axis
-        logging.info("before transformation %s", data)
+        # logging.info("before transformation %s", data)
         # move origin in the middle of the plane
-        transformed = Point3d(self.zero - (self.A - data).lengthXY(), self.zero - (self.B - data).lengthXY(), data.Z)
+        transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
         transformed = transformed * self.scale
-        logging.info("after transformation %s", transformed)
+        # logging.info("after transformation %s", transformed)
         return(transformed)

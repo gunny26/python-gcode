@@ -10,15 +10,16 @@ import pygame
 import time
 
 
-class PlotterSimulator(object):
-    """Pygame Simulation of Plotter"""
+class LaserSimulator(object):
+    """Pygame Simulation of Laser Engraver, derived from PlotterSimulator"""
 
-    def __init__(self, automatic):
+    def __init__(self, automatic, zoom=1.0):
         """automatic inidcates whether the user has to press a key on ever update cycle"""
         self.automatic = automatic
+        self.zoom = zoom
         # initialize pygame
         pygame.init()
-        pygame.display.set_caption("Plotter Simulator")
+        pygame.display.set_caption("Laser Simulator")
         self.background = pygame.display.set_mode((1024, 600))
         # font to use in text surface
         self.font = pygame.font.Font(None, 28)
@@ -43,11 +44,12 @@ class PlotterSimulator(object):
         # draw grid and display
         pygame.display.flip()
         self.draw_grid()
+        # translation to move origin in the middle
+        self.translate_x = 0
+        self.translate_y = 0
         # controller related
         self.controller = None
         self.step_counter = 0
-        self.width = None
-        self.height = None
         self.scale = None
         self.old_position = None
         self.new_position = None
@@ -62,12 +64,9 @@ class PlotterSimulator(object):
     def set_controller(self, controller):
         """called to set controller object"""
         self.controller = controller
-        self.width = controller.transformer.width
-        self.height = controller.transformer.width
-        self.scale = controller.transformer.scale
-        self.draw_scale = self.scale * self.draw_surface.get_width() / self.width
-        self.old_position = (controller.position.X, controller.position.Y)
-        self.new_position = (controller.position.X, controller.position.Y)
+        self.draw_scale = controller.transformer.scale
+        self.new_position = (self._taz_x(self.controller.position.X), self._taz_y(self.controller.position.Y))
+        self.old_position = self.new_position
 
     def set_parser(self, parser):
         """called to set parser object"""
@@ -82,8 +81,14 @@ class PlotterSimulator(object):
         self.pen_color = (32, 32, 32)
         if self.controller.position.Z < 0.0 :
             self.pen_color = (0, 255, 0)
-        self.new_position = (self.controller.position.X * self.draw_scale, self.controller.position.Y * self.draw_scale)
+        self.new_position = (self._taz_x(self.controller.position.X), self._taz_y(self.controller.position.Y))
         self.update()
+
+    def _taz_x(self, x):
+        return(int(x * self.draw_scale * self.zoom + self.translate_x))
+
+    def _taz_y(self, y):
+        return(int(y * self.draw_scale * self.zoom + self.translate_y))
 
     def parser_cb(self, *args):
         """called from parser to inform about changes"""
@@ -103,9 +108,9 @@ class PlotterSimulator(object):
         width = self.grid_surface.get_width()
         height = self.grid_surface.get_height()
         color = pygame.Color(0, 50, 0, 255)
-        for x_steps in range(0, height, 10):
+        for x_steps in range(0, width, 10):
             pygame.draw.line(self.grid_surface, color, (x_steps, 0), (x_steps, height), 1)
-        for y_steps in range(0, width, 10):
+        for y_steps in range(0, height, 10):
             pygame.draw.line(self.grid_surface, color, (0, y_steps), (width, y_steps), 1)
         # thicker lines through origin
         color = pygame.Color(0, 100, 0, 255)
@@ -119,15 +124,17 @@ class PlotterSimulator(object):
         origin for plotter is in the middle / bottom of the page, thats (0,0)
         """
         self.plot_surface.fill((0, 0, 0))
-        position_a = (15, 0)
-        position_b = (self.plot_surface.get_width() - 15, 0)
-        pygame.draw.circle(self.plot_surface, (255, 255, 255), position_a, 15, 1)
-        pygame.draw.circle(self.plot_surface, (255, 255, 255), position_b, 15, 1)
-        pygame.draw.line(self.plot_surface, (255, 0, 0), position_a, self.new_position, 1)
-        pygame.draw.line(self.plot_surface, (0, 0, 255), position_b, self.new_position, 1)
+        position_x = (self._taz_x(self.controller.position.X), 15)
+        position_x_end = (self._taz_x(self.controller.position.X), self.plot_surface.get_height())
+        position_y = (15, self._taz_y(self.controller.position.Y))
+        position_y_end = (self.plot_surface.get_width(), self._taz_y(self.controller.position.Y))
+        pygame.draw.circle(self.plot_surface, (255, 255, 255), position_x, 15, 1)
+        pygame.draw.line(self.plot_surface, (0, 255, 0), position_x, position_x_end, 1)
+        pygame.draw.circle(self.plot_surface, (255, 255, 255), position_y, 15, 1)
+        pygame.draw.line(self.plot_surface, (0, 0, 255), position_y, position_y_end, 1)
         self.draw_surface.blit(self.plot_surface, (0, 0))
 
-    def draw_pen(self):
+    def draw_tool(self):
         """
         paints motors on surface
         origin for plotter is in the middle / bottom of the page, thats (0,0)
@@ -146,44 +153,34 @@ class PlotterSimulator(object):
         self.text_surface.blit(text, (0, font_height * 0 + 1))
         text = self.font.render("Max-Y : %0.2f" % self.controller.stats.max_y, 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 1 + 1))
-        text = self.font.render("Width : %05s" % self.width, 1, textcolor)
+        text = self.font.render("Scale : %05s" % self.draw_scale, 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 2 + 1))
-        text = self.font.render("Height: %05s" % self.height, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 3 + 1))
-        text = self.font.render("Scale : %05s" % self.scale, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 4 + 1))
         text = self.font.render("Motor Positions:", 1, textcolor)
+        self.text_surface.blit(text, (0, font_height * 3 + 1))
+        text = self.font.render("X     : %05s" % (self.controller.motors["X"].position * self.draw_scale), 1, textcolor)
+        self.text_surface.blit(text, (0, font_height * 4 + 1))
+        text = self.font.render("Y     : %05s" % (self.controller.motors["Y"].position * self.draw_scale), 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 5 + 1))
-        text = self.font.render("X     : %05s" % (self.controller.motors["X"].position * self.scale), 1, textcolor)
+        text = self.font.render("Z     : %05s" % (self.controller.motors["Z"].position * self.draw_scale), 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 6 + 1))
-        text = self.font.render("Y     : %05s" % (self.controller.motors["Y"].position * self.scale), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 7 + 1))
-        text = self.font.render("Z     : %05s" % (self.controller.motors["Z"].position * self.scale), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 8 + 1))
-        text = self.font.render("Tranformer Positions:", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 9 + 1))
-        text = self.font.render("A     : %05s" % self.controller.transformer.get_motor_A(), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 10 + 1))
-        text = self.font.render("B     : %05s" % self.controller.transformer.get_motor_B(), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 11 + 1))
         text = self.font.render("Controller Positions:", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 12 + 1))
+        self.text_surface.blit(text, (0, font_height * 7 + 1))
         text = self.font.render("X: %0.2f" % self.controller.position.X, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 13 + 1))
+        self.text_surface.blit(text, (0, font_height * 8 + 1))
         text = self.font.render("Y: %0.2f" % self.controller.position.Y, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 14 + 1))
+        self.text_surface.blit(text, (0, font_height * 9 + 1))
         text = self.font.render("Z: %0.2f" % self.controller.position.Z, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 15 + 1))
+        self.text_surface.blit(text, (0, font_height * 10 + 1))
         text = self.font.render("C-Steps: %05s" % self.step_counter, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 16 + 1))
+        self.text_surface.blit(text, (0, font_height * 11 + 1))
         text = self.font.render("P-Commands: %05s" % self.command_counter, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 17 + 1))
+        self.text_surface.blit(text, (0, font_height * 12 + 1))
         text = self.font.render("Elapsed Time: %s s" % int(time.time() - self.start_time), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 18 + 1))
+        self.text_surface.blit(text, (0, font_height * 13 + 1))
         text = self.font.render("Last Command", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 19 + 1))
+        self.text_surface.blit(text, (0, font_height * 14 + 1))
         text = self.font.render("%s" % self.parser.command, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 20 + 1))
+        self.text_surface.blit(text, (0, font_height * 15 + 1))
  
     def update(self):
         """do pygame update stuff"""
@@ -191,7 +188,7 @@ class PlotterSimulator(object):
         self.draw_text()
         self.draw_grid()
         self.draw_motors()
-        self.draw_pen()
+        self.draw_tool()
         pygame.display.flip()
         # automatic stepping or keypress
         if self.automatic is False:
