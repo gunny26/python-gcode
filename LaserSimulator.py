@@ -4,17 +4,20 @@
 # parse Gcode
 #
 """Module to simulate a plotter"""
+import sys
+import threading
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import pygame
 import time
 
 
-class LaserSimulator(object):
+class LaserSimulator(threading.Thread):
     """Pygame Simulation of Laser Engraver, derived from PlotterSimulator"""
 
-    def __init__(self, automatic, zoom=1.0):
+    def __init__(self, controller, parser, automatic, zoom=1.0):
         """automatic inidcates whether the user has to press a key on ever update cycle"""
+        threading.Thread.__init__(self)
         self.automatic = automatic
         self.zoom = zoom
         # initialize pygame
@@ -41,9 +44,6 @@ class LaserSimulator(object):
         self.pen_surface.set_colorkey((0, 0, 0))
         self.pen_surface.fill((0, 0, 0))
         self.draw_surface.blit(self.pen_surface, (0, 0))
-        # draw grid and display
-        pygame.display.flip()
-        self.draw_grid()
         # translation to move origin in the middle
         self.translate_x = 0
         self.translate_y = 0
@@ -60,6 +60,12 @@ class LaserSimulator(object):
         self.start_time = time.time()
         # pen related
         self.pen_color = (0, 0, 0)
+        # to indicate that this thread should stop
+        self.stop_flag = False
+        # got into update loop
+        self.set_controller(controller)
+        self.set_parser(parser)
+        self.start()
 
     def set_controller(self, controller):
         """called to set controller object"""
@@ -95,7 +101,7 @@ class LaserSimulator(object):
         self.command_counter += 1
         self.update()
 
-    def draw_grid(self):
+    def update_grid(self):
         """
         draw grid on pygame window
         first determine, which axis are to draw
@@ -116,9 +122,8 @@ class LaserSimulator(object):
         color = pygame.Color(0, 100, 0, 255)
         pygame.draw.line(self.grid_surface, color, (width / 2, 0), (width / 2, height))
         pygame.draw.line(self.grid_surface, color, (0, height / 2), (width, height / 2))
-        self.draw_surface.blit(self.grid_surface, (0, 0))
 
-    def draw_motors(self):
+    def update_motors(self):
         """
         paints motors on surface
         origin for plotter is in the middle / bottom of the page, thats (0,0)
@@ -132,9 +137,8 @@ class LaserSimulator(object):
         pygame.draw.line(self.plot_surface, (0, 255, 0), position_x, position_x_end, 1)
         pygame.draw.circle(self.plot_surface, (255, 255, 255), position_y, 15, 1)
         pygame.draw.line(self.plot_surface, (0, 0, 255), position_y, position_y_end, 1)
-        self.draw_surface.blit(self.plot_surface, (0, 0))
 
-    def draw_tool(self):
+    def update_tool(self):
         """
         paints motors on surface
         origin for plotter is in the middle / bottom of the page, thats (0,0)
@@ -142,9 +146,8 @@ class LaserSimulator(object):
         """
         # only if z > 0.0 use a solid color
         pygame.draw.line(self.pen_surface, self.pen_color, self.old_position, self.new_position, 1)
-        self.draw_surface.blit(self.pen_surface, (0, 0))
 
-    def draw_text(self):
+    def update_text(self):
         """display textual informations"""
         font_height = self.font.get_height()
         textcolor = (255, 255, 255)
@@ -181,16 +184,31 @@ class LaserSimulator(object):
         self.text_surface.blit(text, (0, font_height * 14 + 1))
         text = self.font.render("%s" % self.parser.command, 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 15 + 1))
- 
+
     def update(self):
-        """do pygame update stuff"""
-        self.draw_surface.fill((0, 0, 0))
-        self.draw_text()
-        self.draw_grid()
-        self.draw_motors()
-        self.draw_tool()
-        pygame.display.flip()
-        # automatic stepping or keypress
-        if self.automatic is False:
-            while (pygame.event.wait().type != pygame.KEYDOWN):
-                pass
+        """data update loop called from callback methods"""
+        self.update_grid()
+        self.update_motors()
+        self.update_tool()
+ 
+    def run(self):
+        """do pygame update stuff in endless loop"""
+        clock = pygame.time.Clock()
+        while self.stop_flag is False:
+            clock.tick(10) # not more than 60 frames per seconds
+            events = pygame.event.get()  
+            for event in events:  
+                if event.type == pygame.QUIT:  
+                   sys.exit(0)
+            keyinput = pygame.key.get_pressed()
+            if keyinput is not None:
+                # print keyinput
+                if keyinput[pygame.K_ESCAPE]:
+                    sys.exit(1)
+            self.draw_surface.fill((0, 0, 0))
+            self.update_text()
+            # blit subsurfaces
+            self.draw_surface.blit(self.grid_surface, (0, 0))
+            self.draw_surface.blit(self.plot_surface, (0, 0))
+            self.draw_surface.blit(self.pen_surface, (0, 0))
+            pygame.display.flip()

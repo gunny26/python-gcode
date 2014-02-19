@@ -63,11 +63,11 @@ def main():
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        gui = LaserSimulator(automatic=True, zoom=10.0)
+        gui = LaserSimulator(automatic=True, zoom=10.0, controller=controller, parser=parser)
         # gui = GcodeGuiConsole()
-        gui.set_controller(controller)
+        #gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
-        gui.set_parser(parser)
+        #gui.set_parser(parser)
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move stepper motors to origin (0, 0, 0)")
@@ -83,3 +83,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+    sys.exit(0)
+    import cProfile
+    import pstats
+    import trace
+    #profile = "Tracer.profile"
+    #cProfile.runctx( "main()", globals(), locals(), filename=profile)
+    #s = pstats.Stats(profile)
+    #s.sort_stats('time')
+    #s.print_stats()
+    #key = raw_input("Press any key")
+    tracer = trace.Trace( 
+        ignoredirs = [sys.prefix, sys.exec_prefix], 
+        trace = 0) 
+    tracer.run("main()")
+    r = tracer.results() 
+    r.write_results(show_missing=True, coverdir="LaserEngraver")
