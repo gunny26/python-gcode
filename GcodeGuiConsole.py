@@ -20,7 +20,7 @@ class GcodeGuiConsole(object):
 
     def controller_cb(self, *args):
         """called from controller to inform about changes"""
-        logging.info(self.controller.position)
+        # logging.info(self.controller.position)
         self.update()
 
     def set_parser(self, parser):

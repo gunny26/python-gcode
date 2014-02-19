@@ -4,17 +4,20 @@
 # parse Gcode
 #
 """Module to simulate a plotter"""
+import threading
+import sys
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import pygame
 import time
 
 
-class PlotterSimulator(object):
+class PlotterSimulator(threading.Thread):
     """Pygame Simulation of Plotter"""
 
     def __init__(self, automatic):
         """automatic inidcates whether the user has to press a key on ever update cycle"""
+        threading.Thread.__init__(self)
         self.automatic = automatic
         # initialize pygame
         pygame.init()
@@ -58,6 +61,9 @@ class PlotterSimulator(object):
         self.start_time = time.time()
         # pen related
         self.pen_color = (0, 0, 0)
+        # start thread
+        self.stop_flag = False
+        self.start()
 
     def set_controller(self, controller):
         """called to set controller object"""
@@ -111,7 +117,6 @@ class PlotterSimulator(object):
         color = pygame.Color(0, 100, 0, 255)
         pygame.draw.line(self.grid_surface, color, (width / 2, 0), (width / 2, height))
         pygame.draw.line(self.grid_surface, color, (0, height / 2), (width, height / 2))
-        self.draw_surface.blit(self.grid_surface, (0, 0))
 
     def draw_motors(self):
         """
@@ -125,7 +130,6 @@ class PlotterSimulator(object):
         pygame.draw.circle(self.plot_surface, (255, 255, 255), position_b, 15, 1)
         pygame.draw.line(self.plot_surface, (255, 0, 0), position_a, self.new_position, 1)
         pygame.draw.line(self.plot_surface, (0, 0, 255), position_b, self.new_position, 1)
-        self.draw_surface.blit(self.plot_surface, (0, 0))
 
     def draw_pen(self):
         """
@@ -135,9 +139,8 @@ class PlotterSimulator(object):
         """
         # only if z > 0.0 use a solid color
         pygame.draw.line(self.pen_surface, self.pen_color, self.old_position, self.new_position, 1)
-        self.draw_surface.blit(self.pen_surface, (0, 0))
 
-    def draw_text(self):
+    def update_text(self):
         """display textual informations"""
         font_height = self.font.get_height()
         textcolor = (255, 255, 255)
@@ -184,16 +187,33 @@ class PlotterSimulator(object):
         self.text_surface.blit(text, (0, font_height * 19 + 1))
         text = self.font.render("%s" % self.parser.command, 1, textcolor)
         self.text_surface.blit(text, (0, font_height * 20 + 1))
- 
+
     def update(self):
         """do pygame update stuff"""
-        self.draw_surface.fill((0, 0, 0))
-        self.draw_text()
-        self.draw_grid()
         self.draw_motors()
         self.draw_pen()
-        pygame.display.flip()
-        # automatic stepping or keypress
-        if self.automatic is False:
-            while (pygame.event.wait().type != pygame.KEYDOWN):
-                pass
+
+    def run(self):
+        """do pygame update stuff in endless loop"""
+        # draw grid surface only the first time, this surface will not change
+        self.draw_grid()
+        clock = pygame.time.Clock()
+        while self.stop_flag is False:
+            clock.tick(30) # not more than 60 frames per seconds
+            events = pygame.event.get()  
+            for event in events:  
+                if event.type == pygame.QUIT:  
+                    sys.exit(0)
+            keyinput = pygame.key.get_pressed()
+            if keyinput is not None:
+                # print keyinput
+                if keyinput[pygame.K_ESCAPE]:
+                    sys.exit(1)
+            self.draw_surface.fill((0, 0, 0))
+            self.update_text()
+            # blit subsurfaces
+            self.draw_surface.blit(self.grid_surface, (0, 0))
+            self.draw_surface.blit(self.plot_surface, (0, 0))
+            self.draw_surface.blit(self.pen_surface, (0, 0))
+            pygame.display.flip()
+ 

@@ -10,6 +10,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import pygame
 import time
+# own modules
+from Point3d import Point3d as Point3d
 
 
 class LaserSimulator(threading.Thread):
@@ -71,7 +73,7 @@ class LaserSimulator(threading.Thread):
         """called to set controller object"""
         self.controller = controller
         self.draw_scale = controller.transformer.scale
-        self.new_position = (self._taz_x(self.controller.position.X), self._taz_y(self.controller.position.Y))
+        self.new_position = (0, 0)
         self.old_position = self.new_position
 
     def set_parser(self, parser):
@@ -85,23 +87,18 @@ class LaserSimulator(threading.Thread):
         # set pen color according to z position,
         # z below zero indicates drawing
         self.pen_color = (32, 32, 32)
-        if self.controller.position.Z < 0.0 :
+        if self.controller.position.Z < 5.0 :
             self.pen_color = (0, 255, 0)
-        self.new_position = (self._taz_x(self.controller.position.X), self._taz_y(self.controller.position.Y))
+        transformed = self.controller.position * self.draw_scale * self.zoom
+        self.new_position = (transformed.X, transformed.Y)
         self.update()
-
-    def _taz_x(self, x):
-        return(int(x * self.draw_scale * self.zoom + self.translate_x))
-
-    def _taz_y(self, y):
-        return(int(y * self.draw_scale * self.zoom + self.translate_y))
 
     def parser_cb(self, *args):
         """called from parser to inform about changes"""
         self.command_counter += 1
         self.update()
 
-    def update_grid(self):
+    def draw_grid(self):
         """
         draw grid on pygame window
         first determine, which axis are to draw
@@ -129,10 +126,12 @@ class LaserSimulator(threading.Thread):
         origin for plotter is in the middle / bottom of the page, thats (0,0)
         """
         self.plot_surface.fill((0, 0, 0))
-        position_x = (self._taz_x(self.controller.position.X), 15)
-        position_x_end = (self._taz_x(self.controller.position.X), self.plot_surface.get_height())
-        position_y = (15, self._taz_y(self.controller.position.Y))
-        position_y_end = (self.plot_surface.get_width(), self._taz_y(self.controller.position.Y))
+        transformed = self.controller.position * self.draw_scale * self.zoom
+        # transformed = transformed + Point3d(0, 0, 0)
+        position_x = (int(transformed.X), 15)
+        position_x_end = (int(transformed.X), self.plot_surface.get_height())
+        position_y = (15, int(transformed.Y))
+        position_y_end = (self.plot_surface.get_width(), int(transformed.Y))
         pygame.draw.circle(self.plot_surface, (255, 255, 255), position_x, 15, 1)
         pygame.draw.line(self.plot_surface, (0, 255, 0), position_x, position_x_end, 1)
         pygame.draw.circle(self.plot_surface, (255, 255, 255), position_y, 15, 1)
@@ -187,19 +186,21 @@ class LaserSimulator(threading.Thread):
 
     def update(self):
         """data update loop called from callback methods"""
-        self.update_grid()
+        # self.update_grid()
         self.update_motors()
         self.update_tool()
  
     def run(self):
         """do pygame update stuff in endless loop"""
+        # draw grid surface only the first time, this surface will not change
+        self.draw_grid()
         clock = pygame.time.Clock()
         while self.stop_flag is False:
-            clock.tick(10) # not more than 60 frames per seconds
+            clock.tick(30) # not more than 60 frames per seconds
             events = pygame.event.get()  
             for event in events:  
                 if event.type == pygame.QUIT:  
-                   sys.exit(0)
+                    sys.exit(0)
             keyinput = pygame.key.get_pressed()
             if keyinput is not None:
                 # print keyinput
@@ -211,4 +212,4 @@ class LaserSimulator(threading.Thread):
             self.draw_surface.blit(self.grid_surface, (0, 0))
             self.draw_surface.blit(self.plot_surface, (0, 0))
             self.draw_surface.blit(self.pen_surface, (0, 0))
-            pygame.display.flip()
+            pygame.display.update()

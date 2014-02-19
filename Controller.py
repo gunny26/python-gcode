@@ -8,7 +8,6 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 # import inspect
 import math
-import pygame
 import time
 # own modules
 from Point3d import Point3d as Point3d
@@ -106,10 +105,6 @@ class Controller(object):
         self.speed = 0
         # Tool
         self.tool = 1
-        # pygame specificas to draw correct
-        self.pygame_zoom = 1
-        self.pygame_draw = True
-        self.pygame_color = pygame.Color(255, 255, 255, 255)
         # define minimal arc step
         self.angle_step = math.pi / 180 
         self.angle_step_sin = math.sin(self.angle_step)
@@ -165,14 +160,12 @@ class Controller(object):
     def G00(self, *args):
         """rapid motion with maximum speed"""
         #logging.info("G00 called with %s", args)
-        self.pygame_color = pygame.Color(50, 50, 50, 255)
         self.move(args[0])
     G0 = G00
 
     def G01(self, *args):
         """linear motion with given speed"""
         #logging.info("G01 called with %s", args)
-        self.pygame_color = pygame.Color(0, 128, 0, 255)
         # self.set_speed(data)
         self.move(args[0])
     G1 = G01
@@ -181,7 +174,6 @@ class Controller(object):
         """clockwise helical motion"""
         #logging.info("G02 called with %s", args)
         data = args[0]
-        self.pygame_color = pygame.Color(0, 0, 255, 255)
         data["F"] = self.default_speed if "F" not in data else data["F"]
         data["P"] = 1 if "P" not in data else data["P"]
         assert type(data["P"]) == int
@@ -192,7 +184,6 @@ class Controller(object):
         """counterclockwise helical motion"""
         #logging.info("G03 called with %s", args)
         data = args[0]
-        self.pygame_color = pygame.Color(0, 255, 255, 255)
         data["F"] = self.default_speed if "F" not in data else data["F"]
         data["P"] = 1 if "P" not in data else data["P"]
         assert type(data["P"]) == int
@@ -249,7 +240,7 @@ class Controller(object):
         # back to origin
         self.__goto(Point3d(0, 0, 0))
         # unhold everything
-        for _, motor in self.motors.items():
+        for _, motor in list(self.motors.items()):
             motor.unhold()
         # stop spindle
         self.spindle.unhold()
@@ -293,7 +284,7 @@ class Controller(object):
         # back to origin
         self.__goto(Point3d(0, 0, 0))
         # unhold everything
-        for _, motor in self.motors.items():
+        for _, motor in list(self.motors.items()):
             motor.unhold()
         # stop spindle
         self.spindle.unhold()
@@ -468,7 +459,7 @@ class Controller(object):
         # the last fraction left
         self.__step(move_vec_steps)
         if self.surface is not None:
-            self.pygame_update(target)
+            self.gui_cb(target)
         self.position = target
         # after move check controller position with motor positions
         motor_position = Point3d(self.motors["X"].get_position(), self.motors["Y"].get_position(), self.motors["Z"].get_position())
@@ -481,9 +472,6 @@ class Controller(object):
         # assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
         #logging.info("Unit-Drift: Motor: %s; Drift %s; Spindle: %s", \
         #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
-
-    def pygame_update(self, newposition):
-        self.gui_cb(newposition)
 
     def set_speed(self, *args):
         """set speed, if data["F"] is given, defaults to default_speed if not specified"""

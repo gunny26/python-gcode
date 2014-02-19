@@ -6,6 +6,7 @@
 """
 Module to parse Gcode from File
 """
+import os
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import re
@@ -63,7 +64,9 @@ class Parser(object):
         """
         read input file line by line, and parse gcode Commands
         """
-        for line in open(self.filename, "rb"):
+        fd = os.open(self.filename, os.O_RDONLY)
+        f = os.fdopen(fd, "r", -1)
+        for line in f.readlines():
             # cleanup line
             line = line.strip()
             line = line.upper()

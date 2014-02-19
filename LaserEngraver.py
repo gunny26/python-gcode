@@ -13,9 +13,11 @@ if Z is non-zero laser is powered on
 alternatively laser could also trigger with spindle,
 but your gcode has to support this
 """
+#import pyximport
+#pyximport.install()
 import sys
 import logging
-logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 try:
     import RPi.GPIO as GPIO
 except ImportError:
@@ -65,37 +67,35 @@ def main():
         logging.info("Creating GUI")
         gui = LaserSimulator(automatic=True, zoom=10.0, controller=controller, parser=parser)
         # gui = GcodeGuiConsole()
-        #gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
-        #gui.set_parser(parser)
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move stepper motors to origin (0, 0, 0)")
         #key = raw_input("Press any KEY when done")
         parser.read()
-    except ControllerExit, exc:
+    except ControllerExit as exc:
         logging.info(exc)
-    except StandardError, exc:
+    except Exception as exc:
         logging.exception(exc)
     GPIO.output(23, 0)
     GPIO.output(14, 0)
     GPIO.cleanup()
 
 if __name__ == "__main__":
-    main()
-    sys.exit(0)
+    #main()
+    #sys.exit(0)
     import cProfile
     import pstats
-    import trace
-    #profile = "Tracer.profile"
-    #cProfile.runctx( "main()", globals(), locals(), filename=profile)
-    #s = pstats.Stats(profile)
-    #s.sort_stats('time')
-    #s.print_stats()
+    profile = "Tracer.profile"
+    cProfile.runctx( "main()", globals(), locals(), filename=profile)
+    s = pstats.Stats(profile)
+    s.sort_stats('time')
+    s.print_stats()
     #key = raw_input("Press any key")
-    tracer = trace.Trace( 
-        ignoredirs = [sys.prefix, sys.exec_prefix], 
-        trace = 0) 
-    tracer.run("main()")
-    r = tracer.results() 
-    r.write_results(show_missing=True, coverdir="LaserEngraver")
+    #import trace
+    #tracer = trace.Trace( 
+    #    ignoredirs = [sys.prefix, sys.exec_prefix], 
+    #    trace = 0) 
+    #tracer.run("main()")
+    #r = tracer.results() 
+    #r.write_results(show_missing=True, coverdir="LaserEngraver")
