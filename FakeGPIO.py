@@ -51,25 +51,19 @@ except NameError:
 class GPIOWrapper(object):
     """GPIO Object"""
    
-    def __init__(self, pin, gpio=GPIO):
+    def __init__(self, pin, gpio):
         """pin to use"""
         self.pin = pin
         self.gpio = gpio
 
-    def setup(self, *args):
-        self.gpio.setup(self.pin, *args)
+    def setup(self, mode):
+        self.gpio.setup(self.pin, mode)
 
-    def output(self, *args):
-        self.gpio.output(*args)
+    def output(self, value):
+        self.gpio.output(self.pin, value)
 
     def input(self):
         return(self.gpio.input(self.pin))
-
-    def cleanup(*args):
-        self.gpio.cleanup(*args)
-
-    def setmode(*args):
-        self.gpio.setmode(*args)
 
     def __getattr__(self, name):
         def method(*args):

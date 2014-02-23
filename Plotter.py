@@ -67,7 +67,13 @@ def main():
     GPIO.cleanup()
     GPIO.setmode(GPIO.BCM)
     # here we use a shift register
-    shift_register = ShiftRegister(gpio(23), gpio(24), gpio(25), 16, autocommit=True)
+    ser = gpio(23, GPIO)
+    ser.setup(GPIO.OUT)
+    rclk = gpio(24, GPIO)
+    rclk.setup(GPIO.OUT)
+    srclk = gpio(25, GPIO)
+    srclk.setup(GPIO.OUT)
+    shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=True)
     # and we use a fake GPIO Object to use ShiftRegister instead
     m_a_a1 = ShiftGPIOWrapper(shift_register, 0)
     m_a_a2 = ShiftGPIOWrapper(shift_register, 1)
@@ -87,10 +93,10 @@ def main():
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.00))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.00))
+        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.003))
+        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.003))
         # controller.add_motor("Z", UnipolarStepperMotorOnOff(coils=(14, 15, 9, 7), on_position=10, on_direction=0, delay=0.003))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.00))
+        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.003))
         #controller.add_motor("Z", Motor(min_position=-10000, max_position=10000, delay=0.0))
         controller.add_spindle(Spindle()) # generic spindle object
         controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=20.0)) # transformer for plotter usage

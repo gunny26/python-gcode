@@ -86,20 +86,20 @@ class ShiftRegister(object):
         set value for bit at position pos
         """
         if value == 1:
-            self.set_bit(pos)
+            self._set_bit(pos)
         else:
-            self.clear_bit(pos)
+            self._clear_bit(pos)
+        if self.autocommit is True:
+            self.write()
 
-    def set_bit(self, pos):
+    def _set_bit(self, pos):
         """set pin at position pos starting by 0"""
         assert pos < self.pins
         mask = 1 << pos
         self.binary = self.binary | mask
         assert self.binary < self.overflow
-        if self.autocommit is True:
-            self.write()
 
-    def clear_bit(self, pos):
+    def _clear_bit(self, pos):
         assert pos < self.pins
         mask = ~(1 << pos)
         self.binary = self.binary & mask
@@ -117,16 +117,14 @@ class ShiftRegister(object):
     def write(self):
         """push bit register to chip and enable output"""
         self.rclk.output(GPIO.LOW)
-        for bit in range(self.pins):
-            mask = 1 << bit
-            value = 0
-            if (self.binary & mask) > 0:
-                value = 1
+        bit = 16
+        while bit > 0:
+            bit -= 1
             self.srclk.output(GPIO.LOW)
-            self.ser.output(value)
+            self.ser.output(self.get_bit(bit))
             self.srclk.output(GPIO.HIGH)
         self.rclk.output(GPIO.HIGH)
-        # logging.error(self.dump())
+        logging.error(self.dump())
             
     def clear(self):
         """set internal bit representation to zero"""
@@ -145,8 +143,24 @@ class ShiftRegister(object):
         return(" ".join(sb))
 
 def test():
+    import time
+    import sys
     from FakeGPIO import GPIOWrapper as gpio
-    shift_register = ShiftRegister(gpio(23), gpio(24), gpio(25), 16, autocommit=True)
+    GPIO.setmode(GPIO.BCM)
+    for pin in (23, 24, 25):
+        print "setting GPIO %s to HIGH 1s and LOW 1s" % pin
+        ser = gpio(pin, GPIO)
+        ser.setup(GPIO.OUT)
+        try:
+            while True:
+                ser.output(GPIO.HIGH)
+                time.sleep(1)
+                ser.output(GPIO.LOW)
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+    sys.exit()
+    shift_register = ShiftRegister(gpio(23, GPIO), gpio(24, GPIO), gpio(25, GPIO), 16, autocommit=True)
     for pin in range(16):
         shift_register.set_value(pin, 1)
         shift_register.dump()
