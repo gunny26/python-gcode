@@ -28,8 +28,11 @@ on the area.
 Normally any gcode is written for linear X/Y machine, so a special tranformer
 is needed to calculate from X/Y motions to a/b motions.
 """
-import pyximport
-pyximport.install()
+try:
+    import pyximport
+    pyximport.install()
+except ImportError:
+    pass
 import sys
 import math
 import logging
@@ -46,7 +49,7 @@ from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
 #from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
 from PlotterSimulator import PlotterSimulator as PlotterSimulator
-#from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
+from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
 from Motor import UnipolarStepperMotor as UnipolarStepperMotor
@@ -97,8 +100,8 @@ def main():
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        gui = PlotterSimulator(automatic=True)
-        # gui = GcodeGuiConsole()
+        # gui = PlotterSimulator(automatic=True)
+        gui = GcodeGuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)

@@ -107,6 +107,13 @@ class ShiftRegister(object):
         if self.autocommit is True:
             self.write()
 
+    def get_bit(self, pos):
+        assert pos < self.pins
+        mask = 1 << pos
+        if self.binary & mask > 0:
+            return(True)
+        return(False)
+
     def write(self):
         """push bit register to chip and enable output"""
         self.rclk.output(GPIO.LOW)
@@ -119,6 +126,7 @@ class ShiftRegister(object):
             self.ser.output(value)
             self.srclk.output(GPIO.HIGH)
         self.rclk.output(GPIO.HIGH)
+        # logging.error(self.dump())
             
     def clear(self):
         """set internal bit representation to zero"""
@@ -126,8 +134,15 @@ class ShiftRegister(object):
 
     def dump(self):
         """dump internal state, debugging only"""
-        print "%018s" % bin(self.binary)
-        print "%18d" % self.binary
+        sb = []
+        bit = 16
+        while bit > 0:
+            bit -= 1
+            if self.get_bit(bit):
+                sb.append("1")
+            else:
+                sb.append("0")
+        return(" ".join(sb))
 
 def test():
     from FakeGPIO import GPIOWrapper as gpio

@@ -44,8 +44,8 @@ class FakeGPIO(object):
         return method
 
 try:
-    import RPi.GPIO as GPIO
-except ImportError:
+    GPIO
+except NameError:
     GPIO = FakeGPIO
 
 class GPIOWrapper(object):
@@ -57,19 +57,19 @@ class GPIOWrapper(object):
         self.gpio = gpio
 
     def setup(self, *args):
-        self.gpio.setup(self.pin, args)
+        self.gpio.setup(self.pin, *args)
 
     def output(self, *args):
-        self.gpio.output(args)
+        self.gpio.output(*args)
 
     def input(self):
         return(self.gpio.input(self.pin))
 
     def cleanup(*args):
-        self.gpio.cleanup(args)
+        self.gpio.cleanup(*args)
 
     def setmode(*args):
-        self.gpio.setmode(args)
+        self.gpio.setmode(*args)
 
     def __getattr__(self, name):
         def method(*args):
