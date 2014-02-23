@@ -56,7 +56,7 @@ class Laser(Spindle):
 
     def __init__(self, power_pin, speed=1.0):
         self.power_pin = power_pin
-        GPIO.setup(self.power_pin, GPIO.OUT)
+        power_pin.setup(GPIO.OUT)
         Spindle.__init__(self, speed=1.0)
 
     def rotate(self, direction, speed=None):
@@ -64,7 +64,7 @@ class Laser(Spindle):
         turn on spindle and rotate in direction with speed
         """
         logging.info("Turn Laser on")
-        GPIO.output(self.power_pin, 1)
+        self.power_pin.output(GPIO.HIGH)
         self.running = True
         
     def unhold(self):
@@ -72,5 +72,5 @@ class Laser(Spindle):
         power off Spindle
         """
         logging.info("Turn Laser off")
-        GPIO.output(self.power_pin, 0)
+        self.power_pin.output(GPIO.LOW)
         self.running = False

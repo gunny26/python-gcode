@@ -85,9 +85,15 @@ class LaserMotor(Motor):
     """Laser Motor, reactive if axis moves negative"""
 
     def __init__(self, laser_pin, max_position, min_position, delay):
+        """
+        GPIO like Object for laser_pin
+        max_position value
+        min_position value
+        delay between phase changes
+        """
         Motor.__init__(self, max_position, min_position, delay)
         self.laser_pin = laser_pin
-        GPIO.setup(self.laser_pin, GPIO.OUT)
+        self.laser_pin.setup(GPIO.OUT)
         self.unhold()
  
     def _move(self, direction):
@@ -95,14 +101,14 @@ class LaserMotor(Motor):
         self.position += direction
         # turn on laser if position < 0
         if self.position < 0.0:
-            GPIO.output(self.laser_pin, 1)
+            self.laser_pin.output(1)
         else:
-            GPIO.output(self.laser_pin, 0)
+            self.laser_pin.output(0)
 
     def unhold(self):
         """power off"""
         logging.info("Power off laser")
-        GPIO.output(self.laser_pin, 0)
+        self.laser_pin.output(0)
 
 
 class BipolarStepperMotor(Motor):
@@ -153,13 +159,17 @@ class BipolarStepperMotor(Motor):
     SEQUENCE = SEQUENCE_MIXED
 
     def __init__(self, coils, max_position, min_position, delay):
-        """init"""
+        """
+        coils a set of for GPIO like object to represent a1, a2, b1, b2 connection to motor
+        max_position
+        min_position
+        """
         Motor.__init__(self, max_position, min_position, delay)
         self.coils = coils
         # define coil pins as output
         for pin in self.coils:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.setup(pin, 0)
+            pin.setup(GPIO.OUT)
+            pin.output(0)
         self.num_sequence = len(self.SEQUENCE)
         self.unhold()
 
@@ -172,7 +182,7 @@ class BipolarStepperMotor(Motor):
         phase = self.SEQUENCE[self.position % self.num_sequence]
         counter = 0
         for pin in self.coils:
-            GPIO.output(pin, phase[counter])
+            pin.output(phase[counter])
             counter += 1
         self.position += direction
 
@@ -181,7 +191,7 @@ class BipolarStepperMotor(Motor):
         sets any pin of motor to low, so no power is needed
         """
         for pin in self.coils:
-            GPIO.output(pin, False)
+            pin.output(GPIO.LOW)
 
 class UnipolarStepperMotor(Motor):
     """
@@ -231,13 +241,18 @@ class UnipolarStepperMotor(Motor):
     SEQUENCE = SEQUENCE_MIXED
 
     def __init__(self, coils, max_position, min_position, delay):
-        """init"""
+        """
+        coils a set of for GPIO like object to represent a1, a2, b1, b2 connection to motor
+        max_position
+        min_position
+        delay between phase changes in seconds
+        """
         Motor.__init__(self, max_position, min_position, delay)
         self.coils = coils
         # define coil pins as output
         for pin in self.coils:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.setup(pin, 0)
+            pin.setup(GPIO.OUT)
+            pin.output(0)
         self.num_sequence = len(self.SEQUENCE)
         self.unhold()
 
@@ -250,7 +265,7 @@ class UnipolarStepperMotor(Motor):
         phase = self.SEQUENCE[self.position % self.num_sequence]
         counter = 0
         for pin in self.coils:
-            GPIO.output(pin, phase[counter])
+            pin.output(phase[counter])
             counter += 1
         self.position += direction
 
@@ -259,7 +274,7 @@ class UnipolarStepperMotor(Motor):
         sets any pin of motor to low, so no power is needed
         """
         for pin in self.coils:
-            GPIO.output(pin, False)
+            pin.output(GPIO.LOW)
     
     def get_phase(self):
         """returns actual phase in sequence"""
@@ -283,15 +298,20 @@ class UnipolarStepperMotorOnOff(Motor):
     SEQUENCE = SEQUENCE_MIXED
 
     def __init__(self, coils, on_position, on_direction, delay):
-        """init"""
+        """
+        coils a set of for GPIO like object to represent a1, a2, b1, b2 connection to motor
+        max_position
+        min_position
+        delay between phase changes in seconds
+        """
         Motor.__init__(self, on_position, 0, delay)
         self.coils = coils
         self.on_position = on_position
         self.on_direction = on_direction
         # define coil pins as output
         for pin in self.coils:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.setup(pin, 0)
+            pin.setup(GPIO.OUT)
+            pin.output(0)
         self.state = 0
         self.num_sequence = len(self.SEQUENCE)
         self.unhold()
@@ -338,7 +358,7 @@ class UnipolarStepperMotorOnOff(Motor):
         phase = self.SEQUENCE[self.position % self.num_sequence]
         counter = 0
         for pin in self.coils:
-            GPIO.output(pin, phase[counter])
+            pin.output(phase[counter])
             counter += 1
         self.position += direction
 
@@ -347,7 +367,7 @@ class UnipolarStepperMotorOnOff(Motor):
         sets any pin of motor to low, so no power is needed
         """
         for pin in self.coils:
-            GPIO.output(pin, False)
+            pin.output(GPIO.LOW)
     
     def get_phase(self):
         """returns actual phase in sequence"""
@@ -396,14 +416,19 @@ class UnipolarStepperMotorTwoWire(Motor):
     SEQUENCE = ((1,0), (1,1), (0,1), (0,0))
 
     def __init__(self, coils, max_position, min_position, delay):
-        """init"""
+        """
+        coils a set of two GPIO like object to represent a1 and b1 connections to motor
+        max_position
+        min_position
+        delay between phase changes in seconds
+        """
         Motor.__init__(self, max_position, min_position, delay)
         assert len(coils) == 2
         self.coils = coils
         # define coil pins as output
         for pin in self.coils:
-            GPIO.setup(pin, GPIO.OUT)
-            GPIO.setup(pin, 0)
+            pin.setup(GPIO.OUT)
+            pin.output(0)
         self.num_sequence = len(self.SEQUENCE)
         self.unhold()
 
@@ -416,7 +441,7 @@ class UnipolarStepperMotorTwoWire(Motor):
         phase = self.SEQUENCE[self.position % self.num_sequence]
         counter = 0
         for pin in self.coils:
-            GPIO.output(pin, phase[counter])
+            pin.output(phase[counter])
             counter += 1
         self.position += direction
 
@@ -425,7 +450,7 @@ class UnipolarStepperMotorTwoWire(Motor):
         sets any pin of motor to low, so no power is needed
         """
         for pin in self.coils:
-            GPIO.output(pin, False)
+            pin.output(GPIO.LOW)
     
     def get_phase(self):
         """returns actual phase in sequence"""
