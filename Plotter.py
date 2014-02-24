@@ -61,7 +61,7 @@ from Transformer import PlotterTransformer as PlotterTransformer
 def main(): 
     # if no parameter option is given, default to example gcode
     if len(sys.argv) == 1:
-        sys.argv.append("examples/hogwarts_wappen_0001.ngc")
+        sys.argv.append("examples/tiroler_adler.ngc")
     # bring GPIO to a clean state
     GPIO.cleanup()
     GPIO.setmode(GPIO.BCM)
@@ -93,11 +93,9 @@ def main():
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.003))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.003))
-        # controller.add_motor("Z", UnipolarStepperMotorOnOff(coils=(14, 15, 9, 7), on_position=10, on_direction=0, delay=0.003))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.003))
-        #controller.add_motor("Z", Motor(min_position=-10000, max_position=10000, delay=0.0))
+        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.002))
+        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.002))
+        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.002))
         controller.add_spindle(Spindle()) # generic spindle object
         controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=20.0)) # transformer for plotter usage
         # create parser
@@ -115,7 +113,7 @@ def main():
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move pen to left top corner, the origin")
-        #key = raw_input("Press any KEY when done")
+        key = raw_input("Press any KEY when done")
         parser.read()
     except ControllerExit, exc:
         logging.info(exc)

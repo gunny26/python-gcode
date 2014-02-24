@@ -53,7 +53,7 @@ class ShiftRegister(object):
     http://bildr.org/2011/02/74hc595/
     """
 
-    def __init__(self, ser, rclk, srclk, pins, autocommit=False):
+    def __init__(self, ser, rclk, srclk, bits, autocommit=False):
         """
         ser -> GPIO Pin used for SER
         rclk -> GPIO Pin used for RCLK
@@ -68,11 +68,11 @@ class ShiftRegister(object):
         self.ser = ser
         self.rclk = rclk
         self.srclk = srclk
-        self.pins = pins
+        self.bits = bits
         self.autocommit = autocommit
         # initial binary value
         self.binary = 0
-        self.overflow = 1 << pins
+        self.overflow = 1 << self.bits
         # initialize GPIO
         self.ser.setup(GPIO.OUT)
         self.rclk.setup(GPIO.OUT)
@@ -94,13 +94,13 @@ class ShiftRegister(object):
 
     def _set_bit(self, pos):
         """set pin at position pos starting by 0"""
-        assert pos < self.pins
+        assert pos < self.bits
         mask = 1 << pos
         self.binary = self.binary | mask
         assert self.binary < self.overflow
 
     def _clear_bit(self, pos):
-        assert pos < self.pins
+        assert pos < self.bits
         mask = ~(1 << pos)
         self.binary = self.binary & mask
         assert self.binary < self.overflow
@@ -108,7 +108,7 @@ class ShiftRegister(object):
             self.write()
 
     def get_bit(self, pos):
-        assert pos < self.pins
+        assert pos < self.bits
         mask = 1 << pos
         if self.binary & mask > 0:
             return(True)
@@ -117,23 +117,25 @@ class ShiftRegister(object):
     def write(self):
         """push bit register to chip and enable output"""
         self.rclk.output(GPIO.LOW)
-        bit = 16
+        bit = self.bits
         while bit > 0:
             bit -= 1
             self.srclk.output(GPIO.LOW)
             self.ser.output(self.get_bit(bit))
             self.srclk.output(GPIO.HIGH)
         self.rclk.output(GPIO.HIGH)
-        logging.error(self.dump())
+        #logging.error(self.dump())
             
     def clear(self):
         """set internal bit representation to zero"""
         self.binary = 0
+        if self.autocommit is True:
+            self.write()
 
     def dump(self):
         """dump internal state, debugging only"""
         sb = []
-        bit = 16
+        bit = self.bits
         while bit > 0:
             bit -= 1
             if self.get_bit(bit):
@@ -159,18 +161,19 @@ def test():
                 time.sleep(1)
         except KeyboardInterrupt:
             pass
-    sys.exit()
     shift_register = ShiftRegister(gpio(23, GPIO), gpio(24, GPIO), gpio(25, GPIO), 16, autocommit=True)
-    for pin in range(16):
-        shift_register.set_value(pin, 1)
-        shift_register.dump()
-    shift_register.write()
-    shift_register.clear()
-    test_gpio = ShiftGPIOWrapper(shift_register, 1)
-    test_gpio.output(GPIO.HIGH)
-    test_gpio.output(GPIO.LOW)
-    test_gpio.output(GPIO.HIGH)
-    test_gpio.output(GPIO.LOW)
+    print "setting every bit, then clear, and reset"
+    try:
+        while True:
+            for pin in range(16):
+                shift_register.set_value(pin, 1)
+                shift_register.dump()
+                time.sleep(0.1)
+            time.sleep(2)
+            shift_register.clear()
+    except KeyboardInterrupt:
+        pass
+    sys.exit(0)
 
 if __name__ == "__main__":
     test()
