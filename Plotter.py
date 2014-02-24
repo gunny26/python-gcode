@@ -28,6 +28,7 @@ on the area.
 Normally any gcode is written for linear X/Y machine, so a special tranformer
 is needed to calculate from X/Y motions to a/b motions.
 """
+# cython imports, if installed
 try:
     import pyximport
     pyximport.install()
@@ -37,24 +38,22 @@ import sys
 import math
 import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+# FakeGPIO or real one, depends on hardware
 try:
     import RPi.GPIO as GPIO
 except ImportError:
     logging.error("Semms not to be a RaspberryPi")
     from  FakeGPIO import FakeGPIO as GPIO
+# own modules
+# GPIO Warpper, object interface to GPIO Ports
 from FakeGPIO import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
-# own modules
-#from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
-#from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
 from PlotterSimulator import PlotterSimulator as PlotterSimulator
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
 from Motor import UnipolarStepperMotor as UnipolarStepperMotor
-# from Motor import UnipolarStepperMotorOnOff as UnipolarStepperMotorOnOff
-# from Motor import Motor as Motor
 from Spindle import Spindle as Spindle
 from Controller import Controller as Controller
 from Transformer import PlotterTransformer as PlotterTransformer
@@ -66,13 +65,14 @@ def main():
     # bring GPIO to a clean state
     GPIO.cleanup()
     GPIO.setmode(GPIO.BCM)
-    # here we use a shift register
+    # we use GPIO Wrapper, object like interface to real GPIO Module
     ser = gpio(23, GPIO)
     ser.setup(GPIO.OUT)
     rclk = gpio(24, GPIO)
     rclk.setup(GPIO.OUT)
     srclk = gpio(25, GPIO)
     srclk.setup(GPIO.OUT)
+    # in this example a shift register will be used
     shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=True)
     # and we use a fake GPIO Object to use ShiftRegister instead
     m_a_a1 = ShiftGPIOWrapper(shift_register, 0)
