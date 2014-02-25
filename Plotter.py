@@ -40,7 +40,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # FakeGPIO or real one, depends on hardware
 try:
-    import RPi.GPIO as GPIO
+    #import RPi.GPIO as GPIO
+    from GpioObject import GpioObject
+    GPIO = GpioObject(GpioObject.BOARD)
 except ImportError:
     logging.error("Semms not to be a RaspberryPi")
     from  FakeGPIO import FakeGPIO as GPIO
@@ -49,7 +51,7 @@ except ImportError:
 from FakeGPIO import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
-from PlotterSimulator import PlotterSimulator as PlotterSimulator
+# from PlotterSimulator import PlotterSimulator as PlotterSimulator
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
@@ -63,8 +65,8 @@ def main():
     if len(sys.argv) == 1:
         sys.argv.append("examples/tiroler_adler.ngc")
     # bring GPIO to a clean state
-    GPIO.cleanup()
-    GPIO.setmode(GPIO.BCM)
+    GPIO.cleanup_existing()
+    GPIO.setmode(GPIO.BOARD)
     # we use GPIO Wrapper, object like interface to real GPIO Module
     ser = gpio(23, GPIO)
     ser.setup(GPIO.OUT)
@@ -93,9 +95,9 @@ def main():
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.002))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.002))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.002))
+        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.00))
+        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.00))
+        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.00))
         controller.add_spindle(Spindle()) # generic spindle object
         controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=20.0)) # transformer for plotter usage
         # create parser
@@ -115,11 +117,20 @@ def main():
         logging.info("Please move pen to left top corner, the origin")
         key = raw_input("Press any KEY when done")
         parser.read()
-    except ControllerExit, exc:
+    except ControllerExit as exc:
         logging.info(exc)
-    except StandardError, exc:
+    except KeyboardInterrupt as exc:
+        logging.info(exc)
+    except StandardError as exc:
         logging.exception(exc)
     GPIO.cleanup()
 
 if __name__ == "__main__":
-    main()
+    import cProfile
+    import pstats
+    profile = "Tracer.profile"
+    #cProfile.runctx( "main()", globals(), locals(), filename=profile)
+    s = pstats.Stats(profile)
+    s.sort_stats('time')
+    s.print_stats()
+    # main()
