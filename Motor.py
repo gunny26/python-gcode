@@ -21,10 +21,11 @@ class Motor(object):
     usually you have to overwrite __move and unhold methods
     """
 
-    def __init__(self, max_position, min_position, delay):
+    def __init__(self, max_position, min_position, delay, sos_exception=True):
         self.max_position = max_position
         self.min_position = min_position
         self.delay = delay
+        self.sos_exception = sos_exception
         # define
         self.position = 0
         self.float_position = 0.0
@@ -40,6 +41,13 @@ class Motor(object):
         assert type(direction) == int
         assert (direction == -1) or (direction == 1)
         assert 0.0 <= float_step <= 1.0
+        # check between max and min
+        temp = float_step * direction
+        if not (self.min_position < temp < self.max_position):
+            if self.sos_exception is True:
+                raise(StandardError("Boundary reached!"))
+            else:
+                logging.error("%s < %s < %s not true", self.min_position, temp, self.max_position)
         # next step should not before self.last_step_time + self.delay
         time_gap = self.last_step_time + self.delay - time.time()
         if time_gap > 0:
@@ -195,7 +203,7 @@ class BipolarStepperMotor(Motor):
 
 class UnipolarStepperMotor(Motor):
     """
-    Class to represent a bipolar stepper motor
+    Class to represent a unipolar stepper motor
     it could only with on one dimension, forward or backwards
 
     cloil -> set(a1, a2, b1, b2) of GPIO Pins where these connectors are patched

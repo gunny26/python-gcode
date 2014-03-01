@@ -95,19 +95,19 @@ def main():
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.00))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.00))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=20, min_position=0, delay=0.00))
+        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.006))
+        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.006))
+        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=5.0*10, min_position=-0.126*10, delay=0.006))
         controller.add_spindle(Spindle()) # generic spindle object
-        controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=20.0)) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=10.0)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         parser = Parser(filename=sys.argv[1])
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        gui = PlotterSimulator(automatic=True)
-        # gui = GcodeGuiConsole()
+        # gui = PlotterSimulator(automatic=True)
+        gui = GcodeGuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
@@ -126,11 +126,11 @@ def main():
     GPIO.cleanup()
 
 if __name__ == "__main__":
-    import cProfile
-    import pstats
-    profile = "Tracer.profile"
+    #import cProfile
+    #import pstats
+    #profile = "Tracer.profile"
     #cProfile.runctx( "main()", globals(), locals(), filename=profile)
-    s = pstats.Stats(profile)
-    s.sort_stats('time')
-    s.print_stats()
-    # main()
+    #s = pstats.Stats(profile)
+    #s.sort_stats('time')
+    #s.print_stats()
+    main()

@@ -31,6 +31,8 @@ class Parser(object):
         self.gui_cb = None
         # save actual commands on this line
         self.command = None
+        # call list
+        self.calls = []
 
     def set_controller(self, controller):
         """set controller object, must be done prior to parse() call"""
@@ -51,12 +53,13 @@ class Parser(object):
 
         fo example G02 results in call of self.controller.G02(args)
         """
-        logging.debug("calling %s(%s)", methodname, args)
+        # logging.debug("calling %s(%s)", methodname, args)
         self.command = "%s(%s)" % (methodname, args)
         # update gui object
         self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
-        method_to_call(args)
+        self.calls.append((method_to_call, args))
+        # method_to_call(args)
         if methodname[0] == "G":
             self.last_g_code = methodname
 
@@ -76,12 +79,12 @@ class Parser(object):
             if line[0] == "%": 
                 continue
             # start of parsing
-            logging.info("-" * 80)
+            #logging.info("-" * 80)
             comment = re.match("^\((.*)\)?$", line)
             if comment is not None:
-                logging.info(comment.group(0))
+                logging.info("ignoring: %s", comment.group(0))
                 continue
-            logging.info("parsing %s", line)
+            logging.info("parsing: %s", line)
             # first determine if this line is something of G-Command or M-Command
             # if that line is after a modal G or M Code, there are only 
             # G Parameters ("X", "Y", "Z", "F", "I", "J", "K", "P", "R")
@@ -107,4 +110,9 @@ class Parser(object):
                 line = line.replace(code, "")
             # remaining line should be of no interest
             remaining_line = line.strip()
-            # logging.info("remaining line %s", line)
+            if len(remaining_line) > 0:
+                logging.info("remaining: %s", line)
+        logging.info("parsing done")
+        for (method_to_call, args) in self.calls:
+            logging.debug("calling %s(%s)", method_to_call, args)
+            method_to_call(args)
