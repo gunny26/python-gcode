@@ -60,12 +60,15 @@ class PlotterTransformer(Transformer):
         data is a unit vector in R3
         from X/Y/Z Motions this fuction translates to a/b length for plotter
         z axis is ignored for transformation, and left unchanged
+
+        virtual motor X is translated into motor A
+        virtual motor Y is translated into motor B
+        virtual motor Z -> will stay Z
         """
         #logging.debug("__step called with %s", args)
-        # ignore Z axis
         # logging.info("before transformation %s", data)
         # move origin in the middle of the plane
         transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
         transformed = transformed * self.scale
-        # logging.info("after transformation %s", transformed)
+        logging.info("transformation %s -> %s", data, transformed)
         return(transformed)

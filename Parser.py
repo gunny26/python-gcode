@@ -58,7 +58,7 @@ class Parser(object):
         # update gui object
         self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
-        self.calls.append((method_to_call, args))
+        self.calls.append((method_to_call, args, methodname))
         # method_to_call(args)
         if methodname[0] == "G":
             self.last_g_code = methodname
@@ -113,6 +113,6 @@ class Parser(object):
             if len(remaining_line) > 0:
                 logging.info("remaining: %s", line)
         logging.info("parsing done")
-        for (method_to_call, args) in self.calls:
-            logging.debug("calling %s(%s)", method_to_call, args)
+        for (method_to_call, args, methodname) in self.calls:
+            logging.debug("calling %s(%s)", methodname, args)
             method_to_call(args)
