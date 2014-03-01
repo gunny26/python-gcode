@@ -111,8 +111,8 @@ class ShiftRegister(object):
         assert pos < self.bits
         mask = 1 << pos
         if self.binary & mask > 0:
-            return(True)
-        return(False)
+            return(1)
+        return(0)
 
     def write(self):
         """push bit register to chip and enable output"""

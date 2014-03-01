@@ -5,11 +5,11 @@ logging.basicConfig(level=logging.INFO)
 class FakeGPIO(object):
     """use this class on non RaspberryPi"""
 
-    BCM = True
-    OUT = True
-    IN = False
-    HIGH = True
-    LOW = False
+    BCM = 1
+    OUT = 1
+    IN = 0
+    HIGH = 1
+    LOW = 0
 
     @staticmethod
     def setup(*args):
