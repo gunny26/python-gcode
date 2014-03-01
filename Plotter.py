@@ -104,8 +104,8 @@ def main():
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        # gui = PlotterSimulator(automatic=True)
-        gui = GcodeGuiConsole()
+        gui = PlotterSimulator(automatic=True)
+        # gui = GcodeGuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)

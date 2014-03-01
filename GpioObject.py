@@ -65,7 +65,7 @@ class GPIOObject(object):
         "GPIO27" : 13,
     }
 
-
+    # define some static values
     LOW = 0
     HIGH = 1
     OUT = 1
