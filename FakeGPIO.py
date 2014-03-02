@@ -6,6 +6,7 @@ class FakeGPIO(object):
     """use this class on non RaspberryPi"""
 
     BCM = 1
+    BOARD = 0
     OUT = 1
     IN = 0
     HIGH = 1

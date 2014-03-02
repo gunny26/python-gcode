@@ -37,17 +37,17 @@ class PlotterTransformer(Transformer):
     """class to transfor from motor steps to other steps"""
 
 
-    def __init__(self, width, heigth, scale):
+    def __init__(self, width, height, scale):
         Transformer.__init__(self, scale)
         self.width = width
-        self.heigth = heigth
+        self.height = height
         self.scale = scale
         # the zero positon is in bottom middle
-        self.zero = math.sqrt((self.width / 2) ** 2 + (self.heigth / 2) ** 2)
+        self.zero = math.sqrt((self.width / 2) ** 2 + (self.height / 2) ** 2)
         # Motor A is positioned in upper left corner
-        self.motor_A = Point3d(-self.width / 2, -self.heigth / 2)
+        self.motor_A = Point3d(-self.width / 2, -self.height / 2)
         # Motor B is positioned in upper right corner
-        self.motor_B = Point3d(self.width / 2, -self.heigth / 2)
+        self.motor_B = Point3d(self.width / 2, -self.height / 2)
 
     def get_motor_A(self):
         return(self.motor_A)
@@ -57,13 +57,42 @@ class PlotterTransformer(Transformer):
 
     def transform(self, data):
         """
-        data is a unit vector in R3
-        from X/Y/Z Motions this fuction translates to a/b length for plotter
+        data is a unit vector of type Point3d (length = 1)
+        from x,y,z coordinates this fuction translates to a/b/z for plotter
         z axis is ignored for transformation, and left unchanged
 
         virtual motor X is translated into motor A
         virtual motor Y is translated into motor B
         virtual motor Z -> will stay Z
+
+        ^ Y
+        |
+        |      Z
+        |    /
+        |   /        . data(x, y, z)
+        |  /
+        | /
+        |/
+        -----------------------------> X
+
+        should be translated into
+
+        A            B
+         \--------- /
+          \        /
+           \      /
+            \    /
+             \  /
+              \/
+              data(a, b, z)
+        
+        a represents the vector from A to data
+        b represents the vector from B to data
+        z is not used, untouched
+
+        the zero point is exactly in the middle of A and B at the bottom
+        usually zero ion carthesian coordinates is in upper left corner,
+        so y has to be subtracted from height, to go up
         """
         #logging.debug("__step called with %s", args)
         # logging.info("before transformation %s", data)

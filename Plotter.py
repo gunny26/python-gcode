@@ -51,7 +51,7 @@ except ImportError:
 from FakeGPIO import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
-# from PlotterSimulator import PlotterSimulator as PlotterSimulator
+from PlotterSimulator import PlotterSimulator as PlotterSimulator
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
@@ -65,7 +65,10 @@ def main():
     if len(sys.argv) == 1:
         sys.argv.append("examples/tiroler_adler.ngc")
     # bring GPIO to a clean state
-    GPIO.cleanup_existing()
+    try:
+        GPIO.cleanup_existing()
+    except AttributeError:
+        pass
     GPIO.setmode(GPIO.BOARD)
     # we use GPIO Wrapper, object like interface to real GPIO Module
     ser = gpio(23, GPIO)
@@ -94,20 +97,20 @@ def main():
         # build our controller
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
-        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, delay=0.0)
+        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0)
         controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.006))
         controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.006))
         controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=5.0*10, min_position=-0.126*10, delay=0.006))
         controller.add_spindle(Spindle()) # generic spindle object
-        controller.add_transformer(PlotterTransformer(width=1000, heigth=500, scale=10.0)) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         parser = Parser(filename=sys.argv[1])
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        # gui = PlotterSimulator(automatic=True)
-        gui = GcodeGuiConsole()
+        gui = PlotterSimulator(automatic=True)
+        # gui = GcodeGuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
@@ -115,7 +118,7 @@ def main():
         parser.set_gui_cb(gui.parser_cb)
         # start
         logging.info("Please move pen to left top corner, the origin")
-        key = raw_input("Press any KEY when done")
+        # key = raw_input("Press any KEY when done")
         parser.read()
     except ControllerExit as exc:
         logging.info(exc)

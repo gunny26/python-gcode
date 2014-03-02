@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import pygame
 import time
 # own modules
-from Point3d import Point3d as Point3d
+# from Point3d import Point3d as Point3d
 
 
 class LaserSimulator(threading.Thread):
@@ -120,7 +120,7 @@ class LaserSimulator(threading.Thread):
         pygame.draw.line(self.grid_surface, color, (width / 2, 0), (width / 2, height))
         pygame.draw.line(self.grid_surface, color, (0, height / 2), (width, height / 2))
 
-    def update_motors(self):
+    def update_controller(self):
         """
         paints motors on surface
         origin for plotter is in the middle / bottom of the page, thats (0,0)
@@ -148,46 +148,42 @@ class LaserSimulator(threading.Thread):
 
     def update_text(self):
         """display textual informations"""
-        font_height = self.font.get_height()
-        textcolor = (255, 255, 255)
+        text_list = []
+        text_list.append("Parser Informations")
+        text_list.append(" Commands: %05s" % self.command_counter)
+        text_list.append(" Last Command")
+        text_list.append(" %s" % self.parser.command)
+        text_list.append("Max-X : %0.2f" % self.controller.stats.max_x)
+        text_list.append("Max-Y : %0.2f" % self.controller.stats.max_y)
+        text_list.append("Scale : %05s" % self.draw_scale)
+        text_list.append("Motor Informations")
+        text_list.append(" X = %05s" % (self.controller.motors["X"].position * self.draw_scale))
+        text_list.append(" Y = %05s" % (self.controller.motors["Y"].position * self.draw_scale))
+        text_list.append(" Z = %05s" % (self.controller.motors["Z"].position * self.draw_scale))
+        text_list.append("Controller Informations:")
+        text_list.append(" X = %0.2f" % self.controller.position.X)
+        text_list.append(" Y = %0.2f" % self.controller.position.Y)
+        text_list.append(" Z = %0.2f" % self.controller.position.Z)
+        text_list.append(" C-Steps: %05s" % self.step_counter)
+        text_list.append("Elapsed Time: %s s" % int(time.time() - self.start_time))
         self.text_surface.fill((0, 0, 0))
-        text = self.font.render("Max-X : %0.2f" % self.controller.stats.max_x, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 0 + 1))
-        text = self.font.render("Max-Y : %0.2f" % self.controller.stats.max_y, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 1 + 1))
-        text = self.font.render("Scale : %05s" % self.draw_scale, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 2 + 1))
-        text = self.font.render("Motor Positions:", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 3 + 1))
-        text = self.font.render("X     : %05s" % (self.controller.motors["X"].position * self.draw_scale), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 4 + 1))
-        text = self.font.render("Y     : %05s" % (self.controller.motors["Y"].position * self.draw_scale), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 5 + 1))
-        text = self.font.render("Z     : %05s" % (self.controller.motors["Z"].position * self.draw_scale), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 6 + 1))
-        text = self.font.render("Controller Positions:", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 7 + 1))
-        text = self.font.render("X: %0.2f" % self.controller.position.X, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 8 + 1))
-        text = self.font.render("Y: %0.2f" % self.controller.position.Y, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 9 + 1))
-        text = self.font.render("Z: %0.2f" % self.controller.position.Z, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 10 + 1))
-        text = self.font.render("C-Steps: %05s" % self.step_counter, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 11 + 1))
-        text = self.font.render("P-Commands: %05s" % self.command_counter, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 12 + 1))
-        text = self.font.render("Elapsed Time: %s s" % int(time.time() - self.start_time), 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 13 + 1))
-        text = self.font.render("Last Command", 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 14 + 1))
-        text = self.font.render("%s" % self.parser.command, 1, textcolor)
-        self.text_surface.blit(text, (0, font_height * 15 + 1))
+        linecounter = 0
+        textcolor = (255, 255, 255)
+        for line in text_list:
+            text = self.font.render(line, 1, textcolor)
+            self.text_surface.blit(text, (0, self.font.get_height() * linecounter + 1)) 
+            linecounter += 1
 
+    def update_motors(self):
+        # draw real motor positions
+        motor_x = int(self.controller.motors["X"].position * self.zoom / self.controller.resolution)
+        motor_y = int(self.controller.motors["Y"].position * self.zoom / self.controller.resolution)
+        self.plot_surface.set_at((motor_x, motor_y), (255, 0, 0))
+ 
     def update(self):
         """data update loop called from callback methods"""
         # self.update_grid()
-        self.update_motors()
+        self.update_controller()
         self.update_tool()
  
     def run(self):
@@ -208,6 +204,7 @@ class LaserSimulator(threading.Thread):
                     sys.exit(1)
             self.draw_surface.fill((0, 0, 0))
             self.update_text()
+            self.update_motors()
             # blit subsurfaces
             self.draw_surface.blit(self.grid_surface, (0, 0))
             self.draw_surface.blit(self.plot_surface, (0, 0))
