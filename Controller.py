@@ -70,35 +70,41 @@ class ControllerStats(object):
 
 class Controller(object):
     """
-    Class to receive Gcode Commands and Statements
-    and also control a number of motors to do the motion
+    Class to receive Gcode Commands and Statements and translate
+    these statements in actual motor movement commands.
 
-    Motors up to three
-    Spindle -> could be also a laser or something else
+    this class should be setup with 1-3 motors for x,y,z axis
+    and at least one spindle.
+
+    for all of them there are No-Action Classes to serve as placeholder
     """
 
-    def __init__(self, resolution=1.0, default_speed=1.0, delay=0.0):
+    def __init__(self, resolution=1.0, default_speed=1.0, autorun=True):
         """
         initialize Controller Object
         @param
         resolution -> 1.0 means 1 step 1 mm
-        for our purpose - laser engraver - 256 steps are 36mm so resultion is 36 / 256 = 0,1406
-        gcode mm to steps = 1 mm = 256/36 = 
+            so gcode is given in mm, so value in mm times resolution is the amount of steps
+        default_speed -> default rotation speed for spindle
+            TODO -> should be in Spindle class
+        autorun -> in True perform motor commands immediately
+            if False, motor command are stored in self.commands
+            and can be executed independently
         """
         self.default_speed = default_speed
         self.resolution = resolution
-        self.delay = float(delay) / 1000 # in ms
+        self.autorun = autorun
         # initialize position
         self.position = Point3d(0, 0, 0)
-        # timemark of last stepping
-        self.last_step_time = time.time()
         # defaults to absolute movements
-        self.move = self.move_abs
+        self.move = self.__linear_move_abs
         # defaults to millimeter
-        self.unit = "millimeter"
+        # DELETE self.unit = "millimeter"
         # motors dict
         self.motors = {}
         self.spindle = None
+        # GUI Callback method, called after every g-command
+        self.gui_cb = None
         # Feed Rate
         self.feed = 0
         # Speed
@@ -113,20 +119,8 @@ class Controller(object):
         self.stats = ControllerStats()
         # optional a tranforming function
         self.transformer = None
-
-    def set_gui_cb(self, gui_cb):
-        """
-        GUI Callback method, should be called after every step to inform GUI about changes
-        """
-        self.gui_cb = gui_cb
-
-    def get_position(self):
-        """return own position"""
-        return(self.position)
-
-    def get_direction(self, number):
-        """get direction of number"""
-        return(int(number/abs(number)))
+        # list of motor commands
+        self.commands = []
 
     def add_spindle(self, spindle_object):
         """add spindle to controller"""
@@ -142,6 +136,25 @@ class Controller(object):
         """add transformer"""
         self.transformer = transformer
 
+    def set_gui_cb(self, gui_cb):
+        """
+        GUI Callback method, should be called after every step to inform GUI about changes
+        """
+        self.gui_cb = gui_cb
+
+    def get_position(self):
+        """return own position"""
+        return(self.position)
+
+#    def get_direction(self, number):
+#        """
+#        helper class to get direction of number
+#        returns 1 for positive numbers, and -1 for negative numnbers
+#        """
+#        return(int(number/abs(number)))
+
+    # GCommands
+    # for every G-Command a method
     def F(self, feed_str):
         """Set Feed Rate"""
         #logging.info("G00 called with %s", args)
@@ -224,12 +237,12 @@ class Controller(object):
     def G90(self, *args):
         """Absolute distance mode"""
         logging.info("G90 called with %s", args)
-        self.move = self.move_abs
+        self.move = self.__linear_move_abs
 
     def G91(self, *args):
         """Incremental distance mode"""
         logging.info("G91 called with %s", args)
-        self.move = self.move_inc
+        self.move = self.__linear_move_inc
 
     def G94(self, *args):
         """Units per minute feed rate"""
@@ -237,35 +250,32 @@ class Controller(object):
 
     def M2(self, *args):
         logging.debug("M2 end the program called with %s", args)
-        # back to origin
-        self.__goto(Point3d(0, 0, 0))
-        # unhold everything
-        for _, motor in list(self.motors.items()):
-            motor.unhold()
-        # stop spindle
-        self.spindle.unhold()
-        logging.error(self.stats)
-        raise ControllerExit("M02 received, end of program")
+        self.__home_and_end()
 
     def M3(self, *args):
         logging.debug("M3 start the spindle clockwise at speed S called with %s", args)
         data = args[0]
         if "S" in data:
-            self.spindle.rotate(self.spindle.CW, data["S"])
+            # self.spindle.rotate(self.spindle.CW, data["S"])
+            self.__spindle_caller("rotate", self.spindle.CW, data["S"])
         else: 
-            self.spindle.rotate(self.spindle.CW)
+            #self.spindle.rotate(self.spindle.CW)
+            self.__spindle_caller("rotate", self.spindle.CW)
             
     def M4(self, *args):
         logging.debug("M4 start the spindle counter-clockwise at speed S called with %s", args)
         data = args[0]
         if "S" in data:
-            self.spindle.rotate(self.spindle.CCW, data["S"])
+            #self.spindle.rotate(self.spindle.CCW, data["S"])
+            self.__spindle_caller("rotate", self.spindle.CCW, data["S"])
         else: 
-            self.spindle.rotate(self.spindle.CCW)
+            #self.spindle.rotate(self.spindle.CCW)
+            self.__spindle_caller("rotate", self.spindle.CCW)
 
     def M5(self, *args):
         logging.debug("M5 stop the spindle called with %s", args)
         self.spindle.unhold()
+        self.__spindle_caller("unhold")
 
     def M6(self, *args):
         logging.debug("M6 Tool change called with %s", args)
@@ -281,18 +291,26 @@ class Controller(object):
 
     def M30(self, *args):
         logging.debug("M30 end the program called with %s", args)
+        self.__home_and_end()
+
+    def __home_and_end(self):
+        """called at end of G-Code commands
+        to move to origin and poweroff everything"""
         # back to origin
         self.__goto(Point3d(0, 0, 0))
         # unhold everything
-        for _, motor in list(self.motors.items()):
-            motor.unhold()
+        for axis in self.motors.keys():
+            self.__motor_caller(axis, "unhold")
         # stop spindle
-        self.spindle.unhold()
+        self.__spindle_caller("unhold")
         logging.error(self.stats)
-        raise ControllerExit("M30 received, end of program")
+        # raise ControllerExit("M30 received, end of program")
 
     def __get_center(self, target, radius):
-        """get center from target on circle and radius given"""
+        """
+        helper method for G02 and G03 called to get center of arc
+        get center from target on circle and radius given
+        """
         logging.info("__get_center called with %s", (target, radius))
         distance = target - self.position
         # logging.info("x=%s, y=%s, r=%s", x, y, r)
@@ -398,7 +416,18 @@ class Controller(object):
         self.__drift_management(target)
 
     def __drift_management(self, target):
-        """can be called to get closer to target"""
+        """
+        can be called to get closer to target
+        drift is calculated as vector between actual position and target
+        the length of the drift vector should always be under 1
+
+        the remaining drift vector is moved to get as close as possible to target
+
+        Note: 
+            there will always be a small gap between actual position and wanted target,
+            because motors only can move in whole steps
+            a second source of error will be floating point operations
+        """
         drift = self.position - target
         #logging.debug("Drift-Management-before: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
         assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
@@ -407,15 +436,11 @@ class Controller(object):
         #logging.debug("Drift-Management-after: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
         assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
 
-    def __step(self, *args):
+    def __motor_steps(self, *args):
         """
         method to initialize single steps on the different axis
         the size here is already steps, not units as mm or inches
         scaling is done in __goto
-
-        theres the point to implement any tranforming about linear motion,
-        e.g. for makerangelo, there will be a tranforming from
-        carthesian coordinate system to something others
         """
         #logging.debug("__step called with %s", args)
         data = args[0]
@@ -424,9 +449,44 @@ class Controller(object):
             assert -1.0 <= step <= 1.0
             if step == 0.0 : 
                 continue
-            direction = self.get_direction(step)
-            self.motors[axis].move_float(direction, abs(step))
+            direction = int(step/abs(step))
+            self.__motor_caller(axis, "move_float", direction, abs(step))
         self.stats.update(self)
+
+    def __motor_caller(self, axis, function, *args):
+        """
+        wrapper to get all method calles to external motor objects
+        to implement caching, and advanced features
+        """
+        #logging.debug("%s.%s(%s)", axis, function, args)
+        method_to_call = getattr(self.motors[axis], function)
+        self.__caller(method_to_call, *args)
+
+    def __spindle_caller(self, function, *args):
+        """
+        wrapper to get all method calles to external spindle object
+        to implement caching, and advanced features
+        """
+        #logging.debug("spindle.%s(%s)", function, args)
+        method_to_call = getattr(self.spindle, function)
+        self.__caller(method_to_call, *args)
+
+    def __caller(self, method_to_call, *args):
+        """
+        this is the only method which communicated with external objects
+        like motors or spindles.
+        this is the point to implement autorun
+        """
+        # logging.debug("caller(%s, %s)", method_to_call, args)
+        self.commands.append((method_to_call, args))
+        if self.autorun is True:
+            method_to_call(*args)
+
+    def run(self):
+        """run all commands in self.commands"""
+        for (method_to_call, args) in self.commands:
+            logging.info("calling %s(%s)", method_to_call.__name__, args)
+            method_to_call(*args)
 
     def __goto(self, target):
         """
@@ -453,17 +513,17 @@ class Controller(object):
         #logging.error("move_vec_steps.length() = %s", move_vec_steps.length())        
         # use while loop the get to the exact value
         while move_vec_steps.length() > 1.0:
-            self.__step(move_vec_steps_unit)
+            self.__motor_steps(move_vec_steps_unit)
             #logging.error("actual length left to draw in tiny steps: %f", move_vec_steps.length())
             move_vec_steps = move_vec_steps - move_vec_steps_unit
         # the last fraction left
-        self.__step(move_vec_steps)
+        self.__motor_steps(move_vec_steps)
         if self.surface is not None:
             self.gui_cb(target)
         self.position = target
         # after move check controller position with motor positions
         motor_position = Point3d(self.motors["X"].get_position(), self.motors["Y"].get_position(), self.motors["Z"].get_position())
-        drift = self.position * self.resolution - motor_position
+        # drift = self.position * self.resolution - motor_position
         #logging.debug("Target Drift: Actual=%s; Target=%s; Drift=%s", self.position, target, self.position - target)
         #logging.debug("Steps-Drift : Motor=%s; Drift %s length=%s; Spindle: %s", \
         #    motor_position, drift, drift.length(), self.spindle.get_state())
@@ -474,13 +534,16 @@ class Controller(object):
         #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
 
     def set_speed(self, *args):
-        """set speed, if data["F"] is given, defaults to default_speed if not specified"""
+        """
+        set speed, if data["F"] is given, defaults to default_speed if not specified
+        speed is actually not implemented, everything at maximum speed
+        """
         if "F" in args[0]:
             self.speed = args[0]["F"]
         else: 
             self.speed = self.default_speed
 
-    def move_inc(self, *args):
+    def __linear_move_inc(self, *args):
         """
         incremental movement, parameter represents relative position change
         move to given x,y ccordinates
@@ -489,7 +552,7 @@ class Controller(object):
         so to move in both direction at the same time,
         parameter x or y has to be sometime float
         """
-        #logging.info("move_inc called with %s", args)
+        #logging.info("__linear_move_inc called with %s", args)
         if args[0] is None: 
             return
         data = args[0]
@@ -502,14 +565,14 @@ class Controller(object):
         #logging.info("target = %s", target)
         self.__goto(target)
 
-    def move_abs(self, *args):
+    def __linear_move_abs(self, *args):
         """
         absolute movement to position
         args[X,Y,Z] are interpreted as absolute positions
         it is not necessary to give alle three axis, when no value is
         present, there is not movement on this axis
         """
-        #logging.info("move_abs called with %s", args)
+        #logging.info("__linear_move_abs called with %s", args)
         if args[0] is None: 
             return
         data = args[0]
