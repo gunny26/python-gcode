@@ -96,11 +96,14 @@ def main():
         logging.info("Initialize GPIO Modes")
         # build our controller
         logging.info("Creating Controller Object")
+        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.003)
+        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.003)
+        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=10, min_position=-10, delay=0.003, sos_exception=False)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.006))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.006))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=5.0*10, min_position=-0.126*10, delay=0.006))
+        controller.add_motor("X", motor_x)
+        controller.add_motor("Y", motor_y)
+        controller.add_motor("Z", motor_z)
         controller.add_spindle(Spindle()) # generic spindle object
         controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
         # create parser
@@ -109,8 +112,8 @@ def main():
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
-        gui = PlotterSimulator(automatic=True)
-        # gui = GcodeGuiConsole()
+        # gui = PlotterSimulator(automatic=True)
+        gui = GcodeGuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
         controller.set_gui_cb(gui.controller_cb)
@@ -126,6 +129,7 @@ def main():
         logging.info(exc)
     except StandardError as exc:
         logging.exception(exc)
+    shift_register.clear()
     GPIO.cleanup()
 
 if __name__ == "__main__":

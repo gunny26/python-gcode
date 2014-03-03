@@ -99,13 +99,16 @@ def main():
         # build our controller
         logging.info("Creating Controller Object")
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
-        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0)
-        controller.add_motor("X", UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.006))
-        controller.add_motor("Y", UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.006))
-        controller.add_motor("Z", UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=5.0*10, min_position=-0.126*10, delay=0.006))
+        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.003)
+        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.003)
+        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=10, min_position=-10, delay=0.003, sos_exception=False)
+        controller = Controller(resolution=1, default_speed=1.0)
+        controller.add_motor("X", motor_x)
+        controller.add_motor("Y", motor_y)
+        controller.add_motor("Z", motor_z)
         controller.add_spindle(Spindle()) # generic spindle object
-        controller.add_transformer(Transformer()) # transformer for plotter usage
-        # controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
+        # controller.add_transformer(Transformer()) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         #parser = Parser(filename=sys.argv[1])
@@ -125,31 +128,33 @@ def main():
         # parser.read()
         pygame.init()
         screen = pygame.display.set_mode((600,400))
-        clock = pygame.time.Clock()
+        pygame.key.set_repeat(50, 1)
         finished = False
         x = 0
         y = 0
         z = 0
         while not finished:
-            clock.tick(60) # not more than 60 frames per seconds
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    finished = True
-                key = pygame.key.get_pressed()
-                if event.type == pygame.KEYDOWN:
-                    if key[pygame.K_a] : x += 1
-                    elif key[pygame.K_y] : x -= 1
-                    elif key[pygame.K_s] : y += 1
-                    elif key[pygame.K_x] : y -= 1
-                    elif key[pygame.K_d] : z += 1
-                    elif key[pygame.K_c] : z -= 1
-                    else: break
-                    controller.G00({"X":x, "Y":y, "Z":z})
-                    print controller.position
+            # clock.tick(60) # not more than 60 frames per seconds
+            # pygame.event.wait()
+            event = pygame.event.wait()
+            if event.type == pygame.QUIT:
+                finished = True
+            key = pygame.key.get_pressed()
+            if event.type == pygame.KEYDOWN:
+                if key[pygame.K_a] : x += 1
+                elif key[pygame.K_y] : x -= 1
+                elif key[pygame.K_s] : y += 1
+                elif key[pygame.K_x] : y -= 1
+                elif key[pygame.K_d] : z += 1
+                elif key[pygame.K_c] : z -= 1
+                else: break
+                controller.G00({"X":x, "Y":y, "Z":z})
+                print controller.position
     except KeyboardInterrupt as exc:
         logging.info(exc)
     except StandardError as exc:
         logging.exception(exc)
+    shift_register.clear()
     GPIO.cleanup()
 
 if __name__ == "__main__":

@@ -78,8 +78,16 @@ class ShiftRegister(object):
         self.rclk.setup(GPIO.OUT)
         self.srclk.setup(GPIO.OUT)
         # set these two guys to high
-        self.rclk.output(GPIO.HIGH)
-        self.srclk.output(GPIO.HIGH)
+        self.rclk.output(1)
+        self.srclk.output(1)
+
+    def unhold(self):
+        """
+        set anything to low, so no power is consumed
+        """
+        self.rclk.output(0)
+        self.srclk.output(0)
+        self.ser.output(0)
 
     def set_value(self, pos, value):
         """
@@ -116,14 +124,14 @@ class ShiftRegister(object):
 
     def write(self):
         """push bit register to chip and enable output"""
-        self.rclk.output(GPIO.LOW)
+        self.rclk.output(0)
         bit = self.bits
         while bit > 0:
             bit -= 1
-            self.srclk.output(GPIO.LOW)
+            self.srclk.output(0)
             self.ser.output(self.get_bit(bit))
-            self.srclk.output(GPIO.HIGH)
-        self.rclk.output(GPIO.HIGH)
+            self.srclk.output(1)
+        self.rclk.output(1)
         #logging.error(self.dump())
             
     def clear(self):

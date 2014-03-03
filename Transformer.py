@@ -42,7 +42,8 @@ class PlotterTransformer(Transformer):
         self.width = width
         self.height = height
         self.scale = scale
-        # the zero positon is in bottom middle
+        # the zero positon length is in bottom middle
+        # at this length of both motors, we define zero position
         self.zero = math.sqrt((self.width / 2) ** 2 + (self.height / 2) ** 2)
         # Motor A is positioned in upper left corner
         self.motor_A = Point3d(-self.width / 2, -self.height / 2)
@@ -97,6 +98,7 @@ class PlotterTransformer(Transformer):
         #logging.debug("__step called with %s", args)
         # logging.info("before transformation %s", data)
         # move origin in the middle of the plane
+        #transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
         transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
         transformed = transformed * self.scale
         logging.info("transformation %s -> %s", data, transformed)
