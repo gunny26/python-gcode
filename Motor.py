@@ -179,13 +179,13 @@ class BipolarStepperMotor(Motor):
 
     """
 
-    def __init__(self, coils, max_position, min_position, delay):
+    def __init__(self, coils, max_position, min_position, delay, sos_exception=False):
         """
         coils a set of four GPIO like objects to represent a1, a2, b1, b2 connection to motor
         max_position
         min_position
         """
-        Motor.__init__(self, max_position, min_position, delay)
+        Motor.__init__(self, max_position, min_position, delay, sos_exception)
         self.coils = coils
         # define coil pins as output
         self.num_sequence = len(self.SEQUENCE)
@@ -248,14 +248,14 @@ class UnipolarStepperMotor(Motor):
 
     """
 
-    def __init__(self, coils, max_position, min_position, delay):
+    def __init__(self, coils, max_position, min_position, delay, sos_exception=False):
         """
         coils a set of for GPIO like object to represent a1, a2, b1, b2 connection to motor
         max_position
         min_position
         delay between phase changes in seconds
         """
-        Motor.__init__(self, max_position, min_position, delay)
+        Motor.__init__(self, max_position, min_position, delay, sos_exception)
         self.coils = coils
         # define coil pins as output
         self.num_sequence = len(self.SEQUENCE)
@@ -265,12 +265,12 @@ class UnipolarStepperMotor(Motor):
         """
         move one step in direction
         """
+        self.position += direction
         phase = self.SEQUENCE[self.position % self.num_sequence]
         counter = 0
         for pin in self.coils:
             pin.output(phase[counter])
             counter += 1
-        self.position += direction
 
     def unhold(self):
         """
