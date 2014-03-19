@@ -105,7 +105,7 @@ def main():
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)
         controller.add_spindle(Spindle()) # generic spindle object
-        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0, ca_zero=200, h_zero=200)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         parser = Parser(filename=sys.argv[1])
