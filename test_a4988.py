@@ -14,6 +14,7 @@ enable_pin = 25
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(step_pin, GPIO.OUT)
 GPIO.setup(dir_pin, GPIO.OUT)
+GPIO.output(dir_pin, 0)
 GPIO.setup(reset_pin, GPIO.OUT)
 GPIO.output(reset_pin, 0)
 GPIO.output(reset_pin, 1)
