@@ -412,7 +412,7 @@ class Controller(object):
         # calculate drift of whole arc
         arc_drift = self.position - target
         #logging.debug("Arc-Drift: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, arc_drift, arc_drift.length())
-        assert arc_drift.length() < Point3d(1.0, 1.0, 1.0).length()
+        # TODO: changed 19.03 assert arc_drift.length() < Point3d(1.0, 1.0, 1.0).length()
         self.__drift_management(target)
 
     def __drift_management(self, target):
@@ -430,7 +430,7 @@ class Controller(object):
         """
         drift = self.position - target
         #logging.debug("Drift-Management-before: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
-        assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
+        # TODO: changed 19.03 assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
         self.__goto(target)
         drift = self.position - target
         #logging.debug("Drift-Management-after: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())

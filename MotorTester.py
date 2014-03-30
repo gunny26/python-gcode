@@ -86,10 +86,12 @@ def main():
     m_a_a2 = ShiftGPIOWrapper(shift_register, 1)
     m_a_b1 = ShiftGPIOWrapper(shift_register, 2)
     m_a_b2 = ShiftGPIOWrapper(shift_register, 3)
-    m_b_a1 = ShiftGPIOWrapper(shift_register, 4)
-    m_b_a2 = ShiftGPIOWrapper(shift_register, 5)
-    m_b_b1 = ShiftGPIOWrapper(shift_register, 6)
-    m_b_b2 = ShiftGPIOWrapper(shift_register, 7)
+    # B-Motor
+    m_b_a1 = ShiftGPIOWrapper(shift_register, 6)
+    m_b_a2 = ShiftGPIOWrapper(shift_register, 7)
+    m_b_b1 = ShiftGPIOWrapper(shift_register, 4)
+    m_b_b2 = ShiftGPIOWrapper(shift_register, 5)
+    # C-Motor Pen Holder
     m_c_a1 = ShiftGPIOWrapper(shift_register, 8)
     m_c_a2 = ShiftGPIOWrapper(shift_register, 9)
     m_c_b1 = ShiftGPIOWrapper(shift_register, 10)
@@ -108,7 +110,7 @@ def main():
         controller.add_motor("Z", motor_z)
         controller.add_spindle(Spindle()) # generic spindle object
         # controller.add_transformer(Transformer()) # transformer for plotter usage
-        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=1000, ca_zero=420, h_zero=140, scale=1.0)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         #parser = Parser(filename=sys.argv[1])

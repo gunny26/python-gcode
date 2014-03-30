@@ -80,14 +80,17 @@ def main():
     # in this example a shift register will be used
     shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=True)
     # and we use a fake GPIO Object to use ShiftRegister instead
+    # Motor A left upper corner
     m_a_a1 = ShiftGPIOWrapper(shift_register, 0)
     m_a_a2 = ShiftGPIOWrapper(shift_register, 1)
     m_a_b1 = ShiftGPIOWrapper(shift_register, 2)
     m_a_b2 = ShiftGPIOWrapper(shift_register, 3)
-    m_b_a1 = ShiftGPIOWrapper(shift_register, 4)
-    m_b_a2 = ShiftGPIOWrapper(shift_register, 5)
-    m_b_b1 = ShiftGPIOWrapper(shift_register, 6)
-    m_b_b2 = ShiftGPIOWrapper(shift_register, 7)
+    # motor B, should be reversed to A
+    m_b_a1 = ShiftGPIOWrapper(shift_register, 6)
+    m_b_a2 = ShiftGPIOWrapper(shift_register, 7)
+    m_b_b1 = ShiftGPIOWrapper(shift_register, 4)
+    m_b_b2 = ShiftGPIOWrapper(shift_register, 5)
+    # Motor C Penholder
     m_c_a1 = ShiftGPIOWrapper(shift_register, 8)
     m_c_a2 = ShiftGPIOWrapper(shift_register, 9)
     m_c_b1 = ShiftGPIOWrapper(shift_register, 10)
@@ -105,7 +108,7 @@ def main():
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)
         controller.add_spindle(Spindle()) # generic spindle object
-        controller.add_transformer(PlotterTransformer(width=1000, height=500, scale=10.0)) # transformer for plotter usage
+        controller.add_transformer(PlotterTransformer(width=830, scale=15.0, ca_zero=320, h_zero=140)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         parser = Parser(filename=sys.argv[1])

@@ -37,24 +37,17 @@ class PlotterTransformer(Transformer):
     """class to transfor from motor steps to other steps"""
 
 
-    def __init__(self, width, height, scale):
+    def __init__(self, width, scale, ca_zero, h_zero):
         Transformer.__init__(self, scale)
-        self.width = width
-        self.height = height
         self.scale = scale
-        # the zero positon length is in bottom middle
-        # at this length of both motors, we define zero position
-        self.zero = math.sqrt((self.width / 2) ** 2 + (self.height / 2) ** 2)
-        # Motor A is positioned in upper left corner
-        self.motor_A = Point3d(-self.width / 2, -self.height / 2)
-        # Motor B is positioned in upper right corner
-        self.motor_B = Point3d(self.width / 2, -self.height / 2)
-
-    def get_motor_A(self):
-        return(self.motor_A)
-
-    def get_motor_B(self):
-        return(self.motor_B)
+        # two null-position vectors, for motor a and b
+        self.offset_a = Point3d(ca_zero, h_zero, 0)
+        self.offset_b = Point3d(ca_zero - width, h_zero, 0)
+        # remember last length
+        self.zero_a = self.offset_a.lengthXY()
+        self.zero_b = self.offset_b.lengthXY()
+        # remember own position
+        self.position = Point3d(0, 0, 0)
 
     def transform(self, data):
         """
@@ -95,11 +88,21 @@ class PlotterTransformer(Transformer):
         usually zero ion carthesian coordinates is in upper left corner,
         so y has to be subtracted from height, to go up
         """
-        #logging.debug("__step called with %s", args)
-        # logging.info("before transformation %s", data)
-        # move origin in the middle of the plane
-        #transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
-        transformed = Point3d(self.zero - (self.motor_A - data).lengthXY(), self.zero - (self.motor_B - data).lengthXY(), data.Z)
-        transformed = transformed * self.scale
-        logging.info("transformation %s -> %s", data, transformed)
+        #logging.info("last vector a: %s (%s)", self.offset_a, self.zero_a)
+        #logging.info("last vector b: %s (%s)", self.offset_b, self.zero_b)
+        #logging.info("moving about vector %s", data)
+        a = self.offset_a + data * self.scale
+        b = self.offset_b + data * self.scale
+        l_a = a.lengthXY()
+        l_b = b.lengthXY()
+        #logging.info("new vector a: %s (%s)", a, l_a)
+        #logging.info("new vector b: %s (%s)", b, l_b)
+        l_a -= self.zero_a
+        l_b -= self.zero_b
+        transformed = Point3d(l_a, l_b, data.Z * self.scale)
+        #logging.info("transformation %s -> %s", data, transformed)
+        self.offset_a = a
+        self.offset_b = b
+        self.zero_a += l_a
+        self.zero_b += l_b
         return(transformed)
