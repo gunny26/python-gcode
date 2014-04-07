@@ -69,26 +69,22 @@ cdef class ShiftRegister(object):
         if self.autocommit is True:
             self._write()
 
-    def _set(self, int pos):
+    cdef void _set(self, int pos):
         """
         set bit at position pos to HIGH(1) 
         pos starting by 0
         pos has to be lower than self.bits
         """
-        assert pos < self.bits
         cdef int mask = 1 << pos
         self.binary = self.binary | mask
-        assert self.binary < self.overflow
 
-    def _unset(self, int pos):
+    cdef void _unset(self, int pos):
         """
         set bit at position pos to LOW(0)
         pos starting at 0
         """
-        assert pos < self.bits
         cdef int mask = ~(1 << pos)
         self.binary = self.binary & mask
-        assert self.binary < self.overflow
 
     def get_bit(self, int pos):
         """
@@ -97,13 +93,13 @@ cdef class ShiftRegister(object):
         assert pos < self.bits
         cdef int mask = 1 << pos
         if self.binary & mask > 0:
-            return(True)
-        return(False)
+            return(1)
+        return(0)
 
     def commit(self):
         self._write()
 
-    def _write(self):
+    cdef void _write(self):
         """
         push bit register to chip and enable output
         """
