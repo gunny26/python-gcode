@@ -18,21 +18,35 @@ also Motor Power has to be connected
 VMOT > 8V - 32V
 GND -> GND
 """
+import pyximport
+#pyximport.install(pyimport = True) # if you want to compile every py file
+pyximport.install()
+import logging
+logging.basicConfig(level=logging.DEBUG)
 # from RPi import GPIO
 # use own GPIO implementation
-from GpioObject import GpioObject
-GPIO = GpioObject(GpioObject.BOARD)
-from FakeGPIO import GPIOWrapper as gpio
+#from GpioObject import GpioObject
+#GPIO = GpioObject(0)
+from RPi import GPIO
+
+from GPIOWrapper import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
-from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
+from ShiftGPIOWrapper import ShiftGPIOWrapper as ShiftGPIOWrapper
 import time
 import sys
 
 def main():
     # cleanup state and set pin naming mode
-    GPIO.cleanup_existing()
-    GPIO.setmode(GPIO.BOARD)
-
+    try:
+        # for GpioObject
+        GPIO.cleanup_existing()
+        GPIO.setmode(GPIO.BOARD)
+    except AttributeError:
+        # for RPi.GPIO
+        GPIO.cleanup()
+        GPIO.setmode(GPIO.BCM)
+    print type(GPIO)
+    print GPIO.OUT
     # define necessary pins for shift register
     ser = gpio(7, GPIO) # labeled S
     ser.setup(GPIO.OUT) 
@@ -41,7 +55,9 @@ def main():
     srclk = gpio(25, GPIO) # labeled SR
     srclk.setup(GPIO.OUT)
     # and shift register, 16 bits wide
-    shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=True)
+    shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=False)
+    # use some virtual bits in shift register
+    # act like GPIO Pins with this Wrapper Class
     # driver 1 dir and step
     d_1_dir_pin = ShiftGPIOWrapper(shift_register, 0)
     d_1_step_pin = ShiftGPIOWrapper(shift_register, 1)
@@ -50,25 +66,41 @@ def main():
     d_2_step_pin = ShiftGPIOWrapper(shift_register, 3)
     # driver 3 dir and step
     d_3_dir_pin = ShiftGPIOWrapper(shift_register, 4)
-    d_4_step_pin = ShiftGPIOWrapper(shift_register, 5)
+    d_3_step_pin = ShiftGPIOWrapper(shift_register, 5)
+    
+    steps = 0
 
     try:
         d_1_dir_pin.output(DIRECTION)
+        d_2_dir_pin.output(DIRECTION)
+        d_3_dir_pin.output(DIRECTION)
+        shift_register.commit()
         start = time.time()
         while (start + DURATION_S) >= time.time():
-            d_1_step_pin.output(1)
+            d_1_step_pin.output(True)
+            d_2_step_pin.output(True)
+            d_3_step_pin.output(True)
+            shift_register.commit()
             # time.sleep(0.0001)
-            d_1_step_pin.output(0)
-            time.sleep(STEP_INTERVAL)
+            d_1_step_pin.output(False)
+            d_2_step_pin.output(False)
+            d_3_step_pin.output(False)
+            shift_register.commit()
+            # time.sleep(STEP_INTERVAL)
+            steps += 1
     except KeyboardInterrupt:
         pass
+    print "%d steps done" % steps
     shift_register.clear()
     GPIO.cleanup()
 
 if __name__ == "__main__":
     import cProfile
     import pstats
-    DIRECTION = int(sys.argv[1])
+    if len(sys.argv) != 4:
+        print "use %s DIRECTION STEP_INTERVAL DURATION_S"
+        sys.exit(1)
+    DIRECTION = bool(sys.argv[1])
     STEP_INTERVAL = float(sys.argv[2])
     DURATION_S = int(sys.argv[3])
     profile = "test_a4988_shift.profile"

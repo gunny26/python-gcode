@@ -71,9 +71,9 @@ def main():
         pass
     GPIO.setmode(GPIO.BOARD)
     # we use GPIO Wrapper, object like interface to real GPIO Module
-    ser = gpio(23, GPIO)
+    ser = gpio(7, GPIO)
     ser.setup(GPIO.OUT)
-    rclk = gpio(24, GPIO)
+    rclk = gpio(8, GPIO)
     rclk.setup(GPIO.OUT)
     srclk = gpio(25, GPIO)
     srclk.setup(GPIO.OUT)

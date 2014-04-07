@@ -5,12 +5,12 @@ logging.basicConfig(level=logging.INFO)
 class FakeGPIO(object):
     """use this class on non RaspberryPi"""
 
-    BCM = 1
-    BOARD = 0
-    OUT = 1
-    IN = 0
-    HIGH = 1
-    LOW = 0
+    BCM = True
+    BOARD = False
+    OUT = True
+    IN = False
+    HIGH = True
+    LOW = False
 
     @staticmethod
     def setup(*args):
@@ -43,34 +43,3 @@ class FakeGPIO(object):
             if args:
                 logging.info("it had arguments: " + str(args))
         return method
-
-try:
-    GPIO
-except NameError:
-    GPIO = FakeGPIO
-
-class GPIOWrapper(object):
-    """GPIO Object"""
-   
-    def __init__(self, pin, gpio):
-        """pin to use"""
-        self.pin = pin
-        self.gpio = gpio
-
-    def setup(self, mode):
-        self.gpio.setup(self.pin, mode)
-
-    def output(self, value):
-        self.gpio.output(self.pin, value)
-
-    def input(self):
-        return(self.gpio.input(self.pin))
-
-    def __getattr__(self, name):
-        def method(*args):
-            logging.info("tried to handle unknown method " + name)
-            if args:
-                logging.info("it had arguments: " + str(args))
-        return method
-
-
