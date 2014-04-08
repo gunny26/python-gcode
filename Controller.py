@@ -445,7 +445,7 @@ class Controller(object):
         #logging.debug("__step called with %s", args)
         data = args[0]
         for axis in ("X", "Y", "Z"):
-            step = data.__dict__[axis]
+            step = data.get_axis(axis)
             assert -1.0 <= step <= 1.0
             if step == 0.0 : 
                 continue
@@ -559,9 +559,9 @@ class Controller(object):
         target = Point3d(0, 0, 0)
         for axis in ("X", "Y", "Z"):
             if axis in data:
-                target.__dict__[axis] = self.position.__dict__[axis] + data[axis]
+                target.set_axis(axis, self.position.get_axis(axis) + data[axis])
             else:
-                target.__dict__[axis] = self.position.__dict__[axis]
+                target.set_axis(axis, self.position.get_axis(axis))
         #logging.info("target = %s", target)
         self.__goto(target)
 
@@ -579,9 +579,9 @@ class Controller(object):
         target = Point3d(0.0, 0.0, 0.0)
         for axis in ("X", "Y", "Z"):
             if axis in data:
-                target.__dict__[axis] = data[axis]
+                target.set_axis(axis, data[axis])
             else:
-                target.__dict__[axis] = self.position.__dict__[axis]
+                target.set_axis(axis, self.position.get_axis(axis))
         #logging.info("target = %s", target)
         self.__goto(target)
 

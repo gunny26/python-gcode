@@ -8,6 +8,10 @@ import os
 import time
 
 cdef class GpioObject(object):
+    """
+    this is a pure python GPIO implementation via sysfs calles
+    about 3 time sslower as GPIO from RPi Module
+    """
 
     cdef dict BOARD_TO_HEADER
     cdef dict BOARD_TO_BCM 
@@ -25,7 +29,7 @@ cdef class GpioObject(object):
     cdef dict modes
  
 
-    def __init__(self, mode):
+    def __init__(self):
         self.BOARD_TO_HEADER = {
             "P1-01" : "VCC 3.3V", 
             "P1-02" : "VCC 5V",
@@ -100,14 +104,6 @@ cdef class GpioObject(object):
         self.BOARD = 0
         self.BCM = 1
 
-        """
-        mode could be either
-        GpioObject.BCM
-        Board is not implemented
-        GPIOObject.BOARD or GPIOObject.BCM
-        """
-        self.mode = mode
-        self.setmode(mode)
         self.modes = {}
         if not os.path.exists("/sys/class/gpio"):
             raise ImportError("/sys/class/gpio not found, seems not be an raspberry, or gpio modules not loaded")

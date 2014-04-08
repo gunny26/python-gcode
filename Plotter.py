@@ -40,17 +40,17 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 # FakeGPIO or real one, depends on hardware
 try:
-    #import RPi.GPIO as GPIO
-    from GpioObject import GpioObject
-    GPIO = GpioObject(GpioObject.BOARD)
+    import RPi.GPIO as GPIO
+    # from GpioObject import GpioObject
+    # GPIO = GpioObject()
 except ImportError:
     logging.error("Semms not to be a RaspberryPi")
     from  FakeGPIO import FakeGPIO as GPIO
 # own modules
 # GPIO Warpper, object interface to GPIO Ports
-from FakeGPIO import GPIOWrapper as gpio
+from GPIOWrapper import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
-from ShiftRegister import ShiftGPIOWrapper as ShiftGPIOWrapper
+from ShiftGPIOWrapper import ShiftGPIOWrapper as ShiftGPIOWrapper
 from PlotterSimulator import PlotterSimulator as PlotterSimulator
 from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
@@ -67,9 +67,9 @@ def main():
     # bring GPIO to a clean state
     try:
         GPIO.cleanup_existing()
+        GPIO.setmode(GPIO.BOARD)
     except AttributeError:
-        pass
-    GPIO.setmode(GPIO.BOARD)
+        GPIO.setmode(GPIO.BCM)
     # we use GPIO Wrapper, object like interface to real GPIO Module
     ser = gpio(7, GPIO)
     ser.setup(GPIO.OUT)
@@ -99,9 +99,9 @@ def main():
         logging.info("Initialize GPIO Modes")
         # build our controller
         logging.info("Creating Controller Object")
-        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.003)
-        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.003)
-        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=10, min_position=-10, delay=0.003, sos_exception=False)
+        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.0)
+        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.0)
+        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=10, min_position=-10, delay=0.0, sos_exception=False)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0)
         controller.add_motor("X", motor_x)
@@ -136,11 +136,10 @@ def main():
     GPIO.cleanup()
 
 if __name__ == "__main__":
-    #import cProfile
-    #import pstats
-    #profile = "Tracer.profile"
-    #cProfile.runctx( "main()", globals(), locals(), filename=profile)
-    #s = pstats.Stats(profile)
-    #s.sort_stats('time')
-    #s.print_stats()
-    main()
+    import cProfile
+    import pstats
+    profile = "Plotter.profile"
+    cProfile.runctx( "main()", globals(), locals(), filename=profile)
+    s = pstats.Stats(profile)
+    s.sort_stats('time')
+    s.print_stats()
