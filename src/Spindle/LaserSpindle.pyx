@@ -1,35 +1,26 @@
 #/usr/bin/python
-# -*- coding: utf-8 -*-
-#
-# parse Gcode
-#
 
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    from FakeGPIO import FakeGPIO as GPIO
 import logging
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-from Spindle import Spindle
+logging.basicConfig(level=logging.INFO)
+from BaseSpindle import BaseSpindle as BaseSpindle
 
 
-class Laser(Spindle):
+class LaserSpindle(BaseSpindle):
     """Abstract Class for Spindle
     Spindle can rotate clockwise or counterclockwise
     in given Speed
     """
 
     def __init__(self, power_pin, speed=1.0):
+        super(LaserSpindle, self).__init__(speed)
         self.power_pin = power_pin
-        power_pin.setup(GPIO.OUT)
-        Spindle.__init__(self, speed=1.0)
 
     def rotate(self, direction, speed=None):
         """
         turn on spindle and rotate in direction with speed
         """
         logging.info("Turn Laser on")
-        self.power_pin.output(GPIO.HIGH)
+        self.power_pin.output(1)
         self.running = True
         
     def unhold(self):
@@ -37,5 +28,5 @@ class Laser(Spindle):
         power off Spindle
         """
         logging.info("Turn Laser off")
-        self.power_pin.output(GPIO.LOW)
+        self.power_pin.output(0)
         self.running = False

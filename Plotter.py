@@ -29,36 +29,37 @@ Normally any gcode is written for linear X/Y machine, so a special tranformer
 is needed to calculate from X/Y motions to a/b motions.
 """
 # cython imports, if installed
-try:
-    import pyximport
-    pyximport.install()
-except ImportError:
-    pass
+#try:
+#    import pyximport
+#    pyximport.install()
+#except ImportError:
+#    pass
 import sys
 import math
 import logging
-logging.basicConfig(level=logging.DEBUG, format="%(message)s")
+logging.basicConfig(level=logging.ERROR, format="%(message)s")
 # FakeGPIO or real one, depends on hardware
-try:
-    import RPi.GPIO as GPIO
+from FakeGPIO import FakeGPIO as GPIO
+#try:
+#    import RPi.GPIO as GPIO
     # from GpioObject import GpioObject
     # GPIO = GpioObject()
-except ImportError:
-    logging.error("Semms not to be a RaspberryPi")
-    from  FakeGPIO import FakeGPIO as GPIO
+#except ImportError:
+#    logging.error("Semms not to be a RaspberryPi")
+#    from  FakeGPIO import FakeGPIO as GPIO
 # own modules
 # GPIO Warpper, object interface to GPIO Ports
 from GPIOWrapper import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftGPIOWrapper import ShiftGPIOWrapper as ShiftGPIOWrapper
-from PlotterSimulator import PlotterSimulator as PlotterSimulator
-from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
-from Motor import UnipolarStepperMotor as UnipolarStepperMotor
-from Spindle import Spindle as Spindle
+from UnipolarStepperMotor import UnipolarStepperMotor as UnipolarStepperMotor
+from BaseSpindle import BaseSpindle as BaseSpindle
 from Controller import Controller as Controller
 from Transformer import PlotterTransformer as PlotterTransformer
+from PlotterSimulator import PlotterSimulator as PlotterSimulator
+from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
 
 def main(): 
     # if no parameter option is given, default to example gcode
@@ -107,11 +108,11 @@ def main():
         controller.add_motor("X", motor_x)
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)
-        controller.add_spindle(Spindle()) # generic spindle object
+        controller.add_spindle(BaseSpindle()) # generic spindle object
         controller.add_transformer(PlotterTransformer(width=830, scale=15.0, ca_zero=320, h_zero=140)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
-        parser = Parser(filename=sys.argv[1])
+        parser = Parser(filename=sys.argv[1], autorun=1)
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")

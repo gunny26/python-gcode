@@ -12,12 +12,22 @@ logging.basicConfig(level=logging.DEBUG, format="%(message)s")
 import re
 
 
-class Parser(object):
+cdef class Parser(object):
     """
     Class to parse GCode Commands from File
     """
 
-    def __init__(self, filename, autorun=True):
+    cdef str filename
+    cdef int autorun
+    cdef object last_g_code
+    cdef tuple g_params
+    cdef dict rex_g
+    cdef object controller
+    cdef object gui_cb
+    cdef str command
+    cdef list calls
+
+    def __init__(self, str filename, int autorun):
         """
         @params
         filename -> filename to read G-Codes from

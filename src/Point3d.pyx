@@ -4,7 +4,6 @@
 # parse Gcode
 #
 
-# import math
 from libc.math cimport sin, cos, acos, sqrt, M_PI
 
 
@@ -186,5 +185,3 @@ cdef class Point3d(object):
         except ValueError as exc:
             print "Value Error, dot product not between -1 and 1, actually:%f" % dot
             raise(exc)
-        return(0.0)
-            

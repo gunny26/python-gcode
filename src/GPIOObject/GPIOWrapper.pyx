@@ -1,7 +1,7 @@
 #!/usr/bin/python
-import logging
-logging.basicConfig(level=logging.INFO)
-
+"""
+Object Interface to GPIO Calls of one pin
+"""
 
 cdef class GPIOWrapper(object):
     """GPIO Object"""
@@ -15,15 +15,12 @@ cdef class GPIOWrapper(object):
         self.gpio = gpio
 
     cpdef int setup(self, int mode):
-        #logging.debug("setup(%s) called" % mode)
         self.gpio.setup(self.pin, mode)
         return(0)
 
     cpdef int output(self, int value):
-        #logging.debug("output(%s) called" % value)
         self.gpio.output(self.pin, value)
         return(0)
 
     cpdef int input(self):
-        #logging.debug("input() called")
         return(self.gpio.input(self.pin))

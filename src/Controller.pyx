@@ -25,11 +25,13 @@ class ControllerCommandNotImplemented(Exception):
         Exception.__init__(self, *args)
 
 
-class ControllerStats(object):
+cdef class ControllerStats(object):
     """
     Object to hold some statistical informations about Controller
     should be called on every step made
     """
+    cdef int steps
+    cdef double max_x, min_x, max_y, min_y, max_z, min_z, start_time, duration, avg_step_time
 
     def __init__(self):
         """__init__"""
@@ -44,7 +46,7 @@ class ControllerStats(object):
         self.duration = 0.0
         self.avg_step_time = 0.0
 
-    def update(self, controller_obj):
+    cpdef int update(self, object controller_obj):
         """update internal stats counters"""
         # store min / max for X/Y/Z Axis
         if controller_obj.position.X > self.max_x:
@@ -63,6 +65,7 @@ class ControllerStats(object):
         self.steps += 1
         self.duration = time.time() - self.start_time
         self.avg_step_time = self.duration / self.steps
+        return(0)
 
     def __str__(self):
         return(str(self.__dict__))

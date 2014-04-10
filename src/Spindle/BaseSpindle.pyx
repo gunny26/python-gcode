@@ -1,18 +1,10 @@
 #/usr/bin/python
-# -*- coding: utf-8 -*-
-#
-# parse Gcode
-#
 
-try:
-    import RPi.GPIO as GPIO
-except ImportError:
-    from FakeGPIO import FakeGPIO as GPIO
 import logging
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+logging.basicConfig(level=logging.INFO)
 
 
-class Spindle(object):
+class BaseSpindle(object):
     """Abstract Class for Spindle
     Spindle can rotate clockwise or counterclockwise
     in given Speed

@@ -7,10 +7,10 @@ logging.basicConfig(level=logging.DEBUG)
 import os
 import time
 
-cdef class GpioObject(object):
+cdef class GPIOObject(object):
     """
     this is a pure python GPIO implementation via sysfs calles
-    about 3 time sslower as GPIO from RPi Module
+    about 3 time slower as GPIO from RPi Module
     """
 
     cdef dict BOARD_TO_HEADER
@@ -223,54 +223,3 @@ cdef class GpioObject(object):
         os.write(fd, value)
         os.close(fd)
 
-
-def test():
-    GPIO = GpioObject
-    gpio = GPIO(GPIO.BOARD)
-    logging.info("cleanup_existing()")
-    gpio.cleanup_existing()
-    logging.info("cleanup()")
-    gpio.cleanup()
-    for pin in GPIO.BOARD_NUMBERS:    
-        logging.info("setup(%d, GPIO.IN)", pin)
-        gpio.setup(pin, GPIO.IN)
-        logging.info(gpio.gpio_function(pin))
-        logging.info("input(%d)", pin)
-        logging.info(gpio.input(pin))
-        logging.info("cleanup(%d)", pin)
-        gpio.cleanup_pin(pin)
-        logging.info("setup(%d, GPIO.OUT)", pin)
-        gpio.setup(pin, GPIO.OUT)
-        logging.info(gpio.gpio_function(pin))
-        logging.info("output(GPIO.HIGH)")
-        gpio.output(pin, GPIO.HIGH)
-        gpio.output(pin, GPIO.LOW)
-        logging.info("cleanup(%d)", pin)
-        gpio.cleanup_pin(pin)
-    gpio.cleanup()
-    logging.info("Testing BCM Pin Numbering")
-    gpio.setmode(GPIO.BCM)
-    logging.info("cleanup_existing()")
-    gpio.cleanup_existing()
-    logging.info("cleanup()")
-    gpio.cleanup()
-    for pin in GPIO.BCM_NUMBERS:    
-        logging.info("setup(%d, GPIO.IN)", pin)
-        gpio.setup(pin, GPIO.IN)
-        logging.info(gpio.gpio_function(pin))
-        logging.info("input(%d)", pin)
-        logging.info(gpio.input(pin))
-        logging.info("cleanup(%d)", pin)
-        gpio.cleanup_pin(pin)
-        logging.info("setup(%d, GPIO.OUT)", pin)
-        gpio.setup(pin, GPIO.OUT)
-        logging.info(gpio.gpio_function(pin))
-        logging.info("output(GPIO.HIGH)")
-        gpio.output(pin, GPIO.HIGH)
-        gpio.output(pin, GPIO.LOW)
-        logging.info("cleanup(%d)", pin)
-        gpio.cleanup_pin(pin)
-    gpio.dump_state()
-
-if __name__ == "__main__":
-    test()
