@@ -26,7 +26,7 @@ cdef class Transformer(object):
     def __init__(self, float scale=1.0):
         self.scale = scale
 
-    def transform(self, object data):
+    cpdef object transform(self, object data):
         """
         this is only generic tranformer with no action
         """
@@ -58,7 +58,7 @@ cdef class PlotterTransformer(Transformer):
         # remember own position
         self.position = Point3d(0, 0, 0)
 
-    def transform(self, object data):
+    cpdef object transform(self, object data):
         """
         data is a unit vector of type Point3d (length = 1)
         from x,y,z coordinates this fuction translates to a/b/z for plotter

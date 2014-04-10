@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from Motor import Motor as Motor
+from BaseMotor import BaseMotor as BaseMotor
 from LaserMotor import LaserMotor as LaserMotor
 from BipolarStepperMotor import BipolarStepperMotor as BipolarStepperMotor
 from UnipolarStepperMotor import UnipolarStepperMotor as UnipolarStepperMotor

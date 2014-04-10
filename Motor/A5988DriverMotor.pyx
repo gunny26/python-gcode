@@ -7,10 +7,9 @@
 Motor Classes for Controller
 """
 
-from Motor import Motor as Motor
+import BaseMotor
 
-
-class A5988DriverMotor(Motor):
+class A5988DriverMotor(BaseMotor.BaseMotor):
     """
     This Motor is connected to a a5988 driver, which only needs two pins
     to control the motor
@@ -26,7 +25,7 @@ class A5988DriverMotor(Motor):
         min_position
         delay between phase changes in seconds
         """
-        Motor.__init__(self, max_position, min_position, delay, sos_exception)
+        super().__init__(self, max_position, min_position, delay, sos_exception)
         self.step_pin = step_pin
         self.dir_pin = dir_pin
         self.unhold()

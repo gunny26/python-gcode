@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# cython: profile=True
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -15,14 +14,16 @@ cdef class GPIOWrapper(object):
         self.pin = pin
         self.gpio = gpio
 
-    def setup(self, int mode):
+    cpdef int setup(self, int mode):
         #logging.debug("setup(%s) called" % mode)
         self.gpio.setup(self.pin, mode)
+        return(0)
 
-    def output(self, int value):
+    cpdef int output(self, int value):
         #logging.debug("output(%s) called" % value)
         self.gpio.output(self.pin, value)
+        return(0)
 
-    def input(self):
+    cpdef int input(self):
         #logging.debug("input() called")
         return(self.gpio.input(self.pin))

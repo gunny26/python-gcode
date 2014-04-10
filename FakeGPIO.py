@@ -1,7 +1,3 @@
-import logging
-logging.basicConfig(level=logging.INFO)
-
-
 class FakeGPIO(object):
     """use this class on non RaspberryPi"""
 
@@ -36,10 +32,3 @@ class FakeGPIO(object):
     def setmode(*args):
         #logging.error("setmode(%s)", args)
         pass
-
-    def __getattr__(self, name):
-        def method(*args):
-            logging.info("tried to handle unknown method " + name)
-            if args:
-                logging.info("it had arguments: " + str(args))
-        return method

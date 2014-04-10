@@ -1,9 +1,4 @@
 #!/usr/bin/python
-# cython: profile=True
-
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 
 cdef class ShiftGPIOWrapper(object):
     """
@@ -24,19 +19,20 @@ cdef class ShiftGPIOWrapper(object):
         self.shift_register = shift_register
         self.bitnumber = bitnumber
 
-    def setup(self, int mode):
+    cpdef int setup(self, int mode):
         """
         all pins in shift register are output only
         """
-        pass
+        return(0)
 
-    def output(self, int value):
+    cpdef int output(self, int value):
         """
         output value on this bit
         and call ShiftRegister.set_value method
         """
         self.shift_register.set_bit(self.bitnumber, value)
+        return(0)
 
-    def input(self):
+    cpdef int input(self):
         """not realy input, returns only self.bitnumber"""
         return(self.bitnumber)

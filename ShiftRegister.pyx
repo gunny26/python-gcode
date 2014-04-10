@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# cython: profile=True
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -49,15 +48,16 @@ cdef class ShiftRegister(object):
         self.rclk.output(True)
         self.srclk.output(True)
 
-    def unhold(self):
+    cpdef int unhold(self):
         """
         set anything to low, so no power is consumed
         """
         self.rclk.output(False)
         self.srclk.output(False)
         self.ser.output(False)
+        return(0)
 
-    def set_bit(self, int pos, int value):
+    cpdef int set_bit(self, int pos, int value):
         """
         set bit on position <pos> to value <value>
         value should be type bool
@@ -68,6 +68,7 @@ cdef class ShiftRegister(object):
             self._unset(pos)
         if self.autocommit is True:
             self._write()
+        return(0)
 
     cdef void _set(self, int pos):
         """
@@ -86,7 +87,7 @@ cdef class ShiftRegister(object):
         cdef int mask = ~(1 << pos)
         self.binary = self.binary & mask
 
-    def get_bit(self, int pos):
+    cpdef int get_bit(self, int pos):
         """
         return bit at position <pos> type <bool>
         """
@@ -96,8 +97,9 @@ cdef class ShiftRegister(object):
             return(1)
         return(0)
 
-    def commit(self):
+    cpdef int commit(self):
         self._write()
+        return(0)
 
     cdef void _write(self):
         """
@@ -112,15 +114,16 @@ cdef class ShiftRegister(object):
             self.srclk.output(True)
         self.rclk.output(True)
             
-    def clear(self):
+    cpdef clear(self):
         """
         set all bits to zero
         """
         self.binary = 0
         if self.autocommit is True:
             self._write()
+        return(0)
 
-    def dump(self):
+    cpdef str dump(self):
         """
         dump internal state as string 
         debugging only"""
