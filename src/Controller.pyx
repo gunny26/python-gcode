@@ -3,6 +3,7 @@
 #
 # parse Gcode
 #
+#cython: profile=True
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -71,7 +72,7 @@ cdef class ControllerStats(object):
         return(str(self.__dict__))
 
 
-class Controller(object):
+cdef class Controller(object):
     """
     Class to receive Gcode Commands and Statements and translate
     these statements in actual motor movement commands.
@@ -82,7 +83,14 @@ class Controller(object):
     for all of them there are No-Action Classes to serve as placeholder
     """
 
-    def __init__(self, resolution=1.0, default_speed=1.0, autorun=True):
+    cdef double resolution, angle_step, angle_step_sin, angle_step_cos
+    cdef double feed, default_speed, speed
+    cdef int autorun, tool
+    cdef dict motors
+    cdef list commands
+    cdef object position, move, spindle, gui_cb, stats, transformer
+
+    def __init__(self, double resolution, int default_speed, int autorun):
         """
         initialize Controller Object
         @param
@@ -306,7 +314,7 @@ class Controller(object):
             self.__motor_caller(axis, "unhold")
         # stop spindle
         self.__spindle_caller("unhold")
-        logging.error(self.stats)
+        # logging.error(self.stats)
         # raise ControllerExit("M30 received, end of program")
 
     def __get_center(self, target, radius):
@@ -439,14 +447,16 @@ class Controller(object):
         #logging.debug("Drift-Management-after: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
         assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
 
-    def __motor_steps(self, *args):
+    cdef int __motor_steps(self, data):
         """
         method to initialize single steps on the different axis
         the size here is already steps, not units as mm or inches
         scaling is done in __goto
         """
         #logging.debug("__step called with %s", args)
-        data = args[0]
+        # data = args[0]
+        cdef int direction
+        cdef double step
         for axis in ("X", "Y", "Z"):
             step = data.get_axis(axis)
             assert -1.0 <= step <= 1.0
@@ -454,9 +464,9 @@ class Controller(object):
                 continue
             direction = int(step/abs(step))
             self.__motor_caller(axis, "move_float", direction, abs(step))
-        self.stats.update(self)
+        # self.stats.update(self)
 
-    def __motor_caller(self, axis, function, *args):
+    def __motor_caller(self, str axis, str function, *args):
         """
         wrapper to get all method calles to external motor objects
         to implement caching, and advanced features
@@ -491,7 +501,7 @@ class Controller(object):
             logging.info("calling %s(%s)", method_to_call.__name__, args)
             method_to_call(*args)
 
-    def __goto(self, target):
+    cdef __goto(self, object target):
         """
         calculate vector between actual position and target position
         scale this vector to motor-steps-units und split the
@@ -500,14 +510,14 @@ class Controller(object):
         #logging.debug("__goto called with %s", target)
         #logging.debug("moving from %s mm to %s mm", self.position, target)
         #logging.debug("moving from %s steps to %s steps", self.position * self.resolution, target * self.resolution)
-        move_vec = target - self.position
+        cdef object move_vec = target - self.position
         if move_vec.length() == 0.0:
             #logging.info("move_vec is zero, nothing to draw")
             # no movement at all
             return
         # steps on each axes to move
         # scale from mm to steps
-        move_vec_steps = move_vec * self.resolution
+        cdef object move_vec_steps = move_vec * self.resolution
         # maybe some tranformation and scaling ?
         move_vec_steps = self.transformer.transform(move_vec_steps)
         move_vec_steps_unit = move_vec_steps.unit()
@@ -521,11 +531,11 @@ class Controller(object):
             move_vec_steps = move_vec_steps - move_vec_steps_unit
         # the last fraction left
         self.__motor_steps(move_vec_steps)
-        if self.surface is not None:
-            self.gui_cb(target)
+        #if self.surface is not None:
+        #    self.gui_cb(target)
         self.position = target
         # after move check controller position with motor positions
-        motor_position = Point3d(self.motors["X"].get_position(), self.motors["Y"].get_position(), self.motors["Z"].get_position())
+        #motor_position = Point3d(self.motors["X"].get_position(), self.motors["Y"].get_position(), self.motors["Z"].get_position())
         # drift = self.position * self.resolution - motor_position
         #logging.debug("Target Drift: Actual=%s; Target=%s; Drift=%s", self.position, target, self.position - target)
         #logging.debug("Steps-Drift : Motor=%s; Drift %s length=%s; Spindle: %s", \
@@ -535,6 +545,7 @@ class Controller(object):
         # assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
         #logging.info("Unit-Drift: Motor: %s; Drift %s; Spindle: %s", \
         #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
+        return(0)
 
     def set_speed(self, *args):
         """

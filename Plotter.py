@@ -104,7 +104,7 @@ def main():
         motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.0)
         motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=9999, min_position=-9999, delay=0.0, sos_exception=False)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
-        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0)
+        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, autorun=True)
         controller.add_motor("X", motor_x)
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)

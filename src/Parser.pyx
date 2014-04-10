@@ -3,6 +3,7 @@
 #
 # parse Gcode
 #
+#cython: profile=True
 """
 Module to parse Gcode from File
 """
@@ -51,18 +52,20 @@ cdef class Parser(object):
         # call list
         self.calls = []
 
-    def set_controller(self, controller):
+    cpdef int set_controller(self, object controller):
         """set controller object, must be done prior to parse() call"""
         self.controller = controller
+        return(0)
 
-    def set_gui_cb(self, gui_cb):
+    cpdef int set_gui_cb(self, object gui_cb):
         """
         gui should be called after every step
         gui_cb must be a instance method
         """
         self.gui_cb = gui_cb
+        return(0)
 
-    def caller(self, methodname=None, args=None):
+    cdef int caller(self, str methodname, object args):
         """
         calls G- or M- code Method
 
@@ -79,14 +82,16 @@ cdef class Parser(object):
         # method_to_call(args)
         if methodname[0] == "G":
             self.last_g_code = methodname
+        return(0)
 
-    def run(self):
+    cdef int run(self):
         """run stored methodcalls to controller in batch"""
         for (method_to_call, args, methodname) in self.calls:
             # logging.info("calling %s(%s)", methodname, args)
             method_to_call(args)
+        return(0)
 
-    def read(self):
+    cpdef int read(self):
         """
         read input file line by line, and parse gcode Commands
         """
@@ -140,3 +145,4 @@ cdef class Parser(object):
             self.run()
         else:
             logging.info("You have to call run, to call Controller methods")
+        return(0)
