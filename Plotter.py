@@ -37,7 +37,7 @@ is needed to calculate from X/Y motions to a/b motions.
 import sys
 import math
 import logging
-logging.basicConfig(level=logging.ERROR, format="%(message)s")
+logging.basicConfig(level=logging.INFO)
 # FakeGPIO or real one, depends on hardware
 from FakeGPIO import FakeGPIO as GPIO
 #try:
@@ -104,7 +104,7 @@ def main():
         motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.0)
         motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=9999, min_position=-9999, delay=0.0, sos_exception=False)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
-        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, autorun=True)
+        controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, autorun=False)
         controller.add_motor("X", motor_x)
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)
@@ -112,7 +112,7 @@ def main():
         controller.add_transformer(PlotterTransformer(width=830, scale=15.0, ca_zero=320, h_zero=140)) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
-        parser = Parser(filename=sys.argv[1], autorun=1)
+        parser = Parser(filename=sys.argv[1], autorun=False)
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
@@ -126,8 +126,12 @@ def main():
         # start
         logging.info("Please move pen to left top corner, the origin")
         # key = raw_input("Press any KEY when done")
-        for _ in range(3):
-            parser.read()
+        logging.error("start parsing")
+        parser.read()
+        logging.error("parsing done, calling controller methods")
+        parser.run()
+        logging.error("controller calculations done, calling physical world")
+        controller.run()
     except ControllerExit as exc:
         logging.info(exc)
     except KeyboardInterrupt as exc:

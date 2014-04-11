@@ -40,11 +40,13 @@ class A5988DriverMotor(BaseMotor.BaseMotor):
             self.dir_pin.output(1)
         else:
             self.dir_pin.output(0)
+        # driver triggers LOW - HIGH impulse
         self.step_pin.output(0)
         self.step_pin.output(1)
 
     def unhold(self):
         """
-        sets any pin of motor to low, so no power is needed
+        TODO: sleep or enable pin should be set on this function,
+        to power off stepper motors
         """
         pass

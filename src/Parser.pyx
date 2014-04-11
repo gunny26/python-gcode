@@ -3,7 +3,6 @@
 #
 # parse Gcode
 #
-#cython: profile=True
 """
 Module to parse Gcode from File
 """
@@ -16,6 +15,7 @@ import re
 cdef class Parser(object):
     """
     Class to parse GCode Commands from File
+    G-Codes will be translated in method calls in Class Controller
     """
 
     cdef str filename
@@ -76,7 +76,7 @@ cdef class Parser(object):
         # logging.debug("calling %s(%s)", methodname, args)
         self.command = "%s(%s)" % (methodname, args)
         # update gui object
-        self.gui_cb()
+        # self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
         self.calls.append((method_to_call, args, methodname))
         # method_to_call(args)
@@ -84,10 +84,10 @@ cdef class Parser(object):
             self.last_g_code = methodname
         return(0)
 
-    cdef int run(self):
+    cpdef int run(self):
         """run stored methodcalls to controller in batch"""
         for (method_to_call, args, methodname) in self.calls:
-            # logging.info("calling %s(%s)", methodname, args)
+            logging.info("calling %s(%s)", methodname, args)
             method_to_call(args)
         return(0)
 
@@ -97,22 +97,27 @@ cdef class Parser(object):
         """
         fd = os.open(self.filename, os.O_RDONLY)
         f = os.fdopen(fd, "r")
+        # regex compilation
+        codes_rex = re.compile("([F|S|T][\d|\.]+)\D?")
+        gcodes_rex = re.compile("([G|M][\d|\.]+)\D?")
+        comment_rex = re.compile("^\((.*)\)?$")
         for line in f:
             # cleanup line
             line = line.strip()
             line = line.upper()
             # filter out some incorrect lines
-            if len(line) == 0: 
-                continue
-            if line[0] == "%": 
+            # blank lines
+            # lines beginning with % or ( 
+            if len(line) == 0 or line[0] == "%" or line[0] == "(": 
                 continue
             # start of parsing
-            #logging.info("-" * 80)
-            comment = re.match("^\((.*)\)?$", line)
-            if comment is not None:
-                logging.info("ignoring: %s", comment.group(0))
-                continue
-            logging.info("parsing: %s", line)
+            
+            #comment = comment_rex.match(line)
+            #if comment is not None:
+            #    #logging.info("ignoring: %s", comment.group(0))
+            #    continue
+
+            #logging.info("parsing: %s", line)
             # first determine if this line is something of G-Command or M-Command
             # if that line is after a modal G or M Code, there are only 
             # G Parameters ("X", "Y", "Z", "F", "I", "J", "K", "P", "R")
@@ -125,12 +130,12 @@ cdef class Parser(object):
                 if match:
                     params[parameter] = float(match.group(1)[1:])
                     line = line.replace(match.group(1), "")
-            codes = re.findall("([F|S|T][\d|\.]+)\D?", line)
+            codes = codes_rex.findall(line)
             if codes is not None:
                 for code in codes:
                     self.caller(code[0], code[1:])
                     line = line.replace(code, "")
-            gcodes = re.findall("([G|M][\d|\.]+)\D?", line)
+            gcodes = gcodes_rex.findall(line)
             if (len(params) > 0) and (len(gcodes) == 0):
                 gcodes.append(self.last_g_code)
             for code in gcodes:
@@ -139,10 +144,10 @@ cdef class Parser(object):
             # remaining line should be of no interest
             remaining_line = line.strip()
             if len(remaining_line) > 0:
-                logging.info("remaining: %s", line)
+                logging.debug("remaining: %s", line)
         logging.info("parsing done")
         if self.autorun is True:
             self.run()
         else:
-            logging.info("You have to call run, to call Controller methods")
+            logging.info("You have to call run(), to call Controller methods")
         return(0)

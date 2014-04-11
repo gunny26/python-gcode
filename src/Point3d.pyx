@@ -3,7 +3,6 @@
 #
 # parse Gcode
 #
-#cython: profile=True
 
 from libc.math cimport sin, cos, acos, sqrt, M_PI
 
@@ -22,10 +21,10 @@ cdef class Point3d(object):
         self.Y = y
         self.Z = z
 
-    def get_axis(self, axisname):
+    cpdef get_axis(self, axisname):
         return(getattr(self, axisname))
 
-    def set_axis(self, axisname, value):
+    cpdef set_axis(self, axisname, value):
         return(setattr(self, axisname, value))
  
     def __repr__(self):
@@ -175,12 +174,6 @@ cdef class Point3d(object):
         """
         try:
             dot = self.dot(other)
-            if dot > 1.0:
-                print "Dot Product %f" % dot
-                dot = 1
-            elif dot < -1.0:
-                print "Dot Product %f" % dot
-                dot = -1
             result = acos(dot)
             return(result)
         except ValueError as exc:

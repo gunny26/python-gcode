@@ -67,9 +67,12 @@ cdef class BaseMotor(object):
         float_steps -> what fraction of a single step should be moved
             internally a step is only initialized if a full step is reached
         """
+        cdef double temp
+        cdef double time_gap
+        cdef double distance
         #logging.debug("move_float called with %d, %f", direction, float_step)
         # boundary check
-        cdef int temp = self.position + int(float_step * direction)
+        temp = self.float_position + float_step * direction
         if not (self.min_position <= temp <= self.max_position):
             if self.sos_exception is True:
                 raise(StandardError("Boundary reached: %s < %s < %s not true" % (self.min_position, temp, self.max_position)))
@@ -78,36 +81,29 @@ cdef class BaseMotor(object):
                 # dont move any further
                 return(0)
         # next step should not before self.last_step_time + self.delay
-        cdef double time_gap = self.last_step_time + self.delay - time.time()
+        time_gap = self.last_step_time + self.delay - time.time()
         if time_gap > 0:
             time.sleep(time_gap)
-        self.float_position += (float_step * direction)
-        cdef double distance = abs(self.position - self.float_position)
+        # boundary check ok, waited for stepper interleave, lets rock
+        self.float_position = temp
+        distance = abs(self.position - self.float_position)
+        # move only if distance is > 1
+        # distance should never be more than 2
         if distance >= 1.0:
-            #logging.debug("initializing full step, distance %s > 1.0", distance) 
             self._move(direction)
-        #else:
-            #logging.debug("distance %s to small to initialize full step", distance)
         # remember last_step_time
         self.last_step_time = time.time()
-        distance = abs(self.float_position - self.position)
-        #logging.debug("int_position = %d : float_position = %f : distance = %f", self.position, self.float_position, distance)
-        # final distance between exact float and real int must be lesser than 1.0
-        assert distance < 1.0
         return(0)
 
     cdef int _move(self, int direction):
         """
         move number of full integer steps
         """
-        #logging.debug("Moving Motor One step in direction %s", direction)
-        #logging.debug("Motor accuracy +/- %s", self.position - self.float_position)
         self.position += direction
         return(0)
 
     cdef int unhold(self):
         """release power"""
-        #logging.info("Unholding Motor Coils")
         return(0)
 
     cpdef int get_position(self):

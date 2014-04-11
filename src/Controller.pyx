@@ -3,7 +3,6 @@
 #
 # parse Gcode
 #
-#cython: profile=True
 
 import logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -88,8 +87,8 @@ cdef class Controller(object):
     cdef int autorun, tool
     cdef dict motors
     cdef list commands
-    cdef object position, move, spindle, gui_cb, stats, transformer
-    cdef object __caller
+    cdef object position, spindle, gui_cb, stats, transformer
+    cdef object __caller, __linear_move
 
     def __init__(self, double resolution, int default_speed, int autorun):
         """
@@ -115,7 +114,7 @@ cdef class Controller(object):
         # initialize position
         self.position = Point3d(0, 0, 0)
         # defaults to absolute movements
-        self.move = self.__linear_move_abs
+        self.__linear_move = self.__linear_move_abs
         # defaults to millimeter
         # DELETE self.unit = "millimeter"
         # motors dict
@@ -168,35 +167,28 @@ cdef class Controller(object):
     # for every G-Command a method
     def F(self, feed_str):
         """Set Feed Rate"""
-        #logging.info("G00 called with %s", args)
         self.feed = float(feed_str)
 
     def S(self, speed_str):
         """Set Feed Rate"""
-        #logging.info("G00 called with %s", args)
         self.speed = int(speed_str)
 
     def T(self, tool_str):
         """Set Feed Rate"""
-        #logging.info("G00 called with %s", args)
         self.tool = int(tool_str)
 
     def G00(self, *args):
         """rapid motion with maximum speed"""
-        #logging.info("G00 called with %s", args)
-        self.move(args[0])
+        self.__linear_move(args[0])
     G0 = G00
 
     def G01(self, *args):
         """linear motion with given speed"""
-        #logging.info("G01 called with %s", args)
-        # self.set_speed(data)
-        self.move(args[0])
+        self.__linear_move(args[0])
     G1 = G01
 
     def G02(self, *args):
         """clockwise helical motion"""
-        #logging.info("G02 called with %s", args)
         data = args[0]
         data["F"] = self.default_speed if "F" not in data else data["F"]
         data["P"] = 1 if "P" not in data else data["P"]
@@ -206,7 +198,6 @@ cdef class Controller(object):
 
     def G03(self, *args):
         """counterclockwise helical motion"""
-        #logging.info("G03 called with %s", args)
         data = args[0]
         data["F"] = self.default_speed if "F" not in data else data["F"]
         data["P"] = 1 if "P" not in data else data["P"]
@@ -248,12 +239,12 @@ cdef class Controller(object):
     def G90(self, *args):
         """Absolute distance mode"""
         logging.info("G90 called with %s", args)
-        self.move = self.__linear_move_abs
+        self.__linear_move = self.__linear_move_abs
 
     def G91(self, *args):
         """Incremental distance mode"""
         logging.info("G91 called with %s", args)
-        self.move = self.__linear_move_inc
+        self.__linear_move = self.__linear_move_inc
 
     def G94(self, *args):
         """Units per minute feed rate"""
@@ -267,20 +258,16 @@ cdef class Controller(object):
         logging.debug("M3 start the spindle clockwise at speed S called with %s", args)
         data = args[0]
         if "S" in data:
-            # self.spindle.rotate(self.spindle.CW, data["S"])
             self.__spindle_caller("rotate", self.spindle.CW, data["S"])
         else: 
-            #self.spindle.rotate(self.spindle.CW)
             self.__spindle_caller("rotate", self.spindle.CW)
             
     def M4(self, *args):
         logging.debug("M4 start the spindle counter-clockwise at speed S called with %s", args)
         data = args[0]
         if "S" in data:
-            #self.spindle.rotate(self.spindle.CCW, data["S"])
             self.__spindle_caller("rotate", self.spindle.CCW, data["S"])
         else: 
-            #self.spindle.rotate(self.spindle.CCW)
             self.__spindle_caller("rotate", self.spindle.CCW)
 
     def M5(self, *args):
@@ -304,7 +291,7 @@ cdef class Controller(object):
         logging.debug("M30 end the program called with %s", args)
         self.__home_and_end()
 
-    def __home_and_end(self):
+    cdef __home_and_end(self):
         """called at end of G-Code commands
         to move to origin and poweroff everything"""
         # back to origin
@@ -314,36 +301,28 @@ cdef class Controller(object):
             self.__motor_caller(axis, "unhold")
         # stop spindle
         self.__spindle_caller("unhold")
-        # logging.error(self.stats)
-        # raise ControllerExit("M30 received, end of program")
 
     cdef object __get_center(self, object target, double radius):
         """
         helper method for G02 and G03 called to get center of arc
         get center from target on circle and radius given
         """
-        logging.info("__get_center called with %s", (target, radius))
         cdef object distance = target - self.position
-        # logging.info("x=%s, y=%s, r=%s", x, y, r)
         cdef double h_x2_div_d = math.sqrt(4 * radius **2 - distance.X**2 - distance.Y**2) / math.sqrt(distance.X**2 + distance.Y**2)
         cdef double i = (distance.X - (distance.Y * h_x2_div_d))/2
         cdef double j = (distance.Y + (distance.X * h_x2_div_d))/2
         return(Point3d(i, j, 0.0))
 
-    def __arc(self, *args):
+    cdef __arc(self, dict data, int ccw):
         """
         given actual position and 
         x, y, z relative position of stop point on arc
         i, j, k relative position of center
 
         i am not sure if this implementation is straight forward enough
-        semms more hacked than methematically correct
+        semms more hacked than mathematically correct
         TODO: Improve
         """
-        #logging.info("__arc called with %s", args)
-        #logging.debug("Actual Position at %s", self.position)
-        data = args[0]
-        ccw = args[1]
         # correct some values if not specified
         if "X" not in data: data["X"] = self.position.X
         if "Y" not in data: data["Y"] = self.position.Y
@@ -351,44 +330,49 @@ cdef class Controller(object):
         if "I" not in data: data["I"] = 0.0
         if "J" not in data: data["J"] = 0.0
         if "K" not in data: data["K"] = 0.0
-        target = Point3d(data["X"], data["Y"], data["Z"])
-        #logging.debug("Endpoint of arc at %s", target)
-        # either R or IJK are given
-        offset = None
+        # arc endpoint at X/Y/Z
+        cdef object target = Point3d(data["X"], data["Y"], data["Z"])
+        # calculate endpoint of arc, either given in
+        # I/J/K position or R
+        cdef object offset
         if "R" in data:
             offset = self.__get_center(target, data["R"])
         else:
             offset = Point3d(data["I"], data["J"], data["K"])
-        #logging.debug("Offset = %s", offset)
-        center = self.position + offset
-        #logging.debug("Center of arc at %s", center)
-        # DELETE radius = offset.length()
-        #logging.debug("Radius: %s", radius)
-        # get the angle bewteen the two vectors
-        target_vec = (target - center).unit()
-        #logging.debug("target_vec : %s; angle %s", target_vec, target_vec.angle())
-        position_vec = (self.position - center).unit()
-        #logging.debug("position_vec : %s; angle %s", position_vec, position_vec.angle())
-        angle = target_vec.angle_between(position_vec)
+        #startpoint and endpoint are known, so calculate midpoint
+        cdef object center = self.position + offset
+        # get the angle bewteen
+        # unit vector from mid to target
+        # unit vector from mid to actual position
+        cdef object target_vec = (target - center).unit()
+        cdef object position_vec = (self.position - center).unit()
+        cdef double angle = target_vec.angle_between(position_vec)
+        # next trigonometry
         #logging.debug("angle between target and position is %s", target_vec.angle_between(position_vec))
-        start_angle = None
-        stop_angle = None
-        angle_step = math.pi / 180
-        # shortcut, if angle is very small, make a straight line
+        cdef double start_angle
+        cdef double stop_angle
+        cdef double angle_step = math.pi / 180
+        # shortcut, if angle is smaller than angle_step,
+        # make a straight line
         if abs(angle) <= self.angle_step:
             self.__goto(target)
             return
+        # according to count/non-counter clockwise
+        # and actual position and target
+        # calculate starting and stop angle adn stepsize
+        cdef double target_angle = target_vec.angle()
+        cdef double position_angle = position_vec.angle()
         if ccw == 1:
             # G3 movement
             # angle step will be added
             # target angle should be greater than position angle
             # if not so correct target_angle = 2 * math.pi - target_angle 
-            if target_vec.angle() < position_vec.angle():
-                start_angle = position_vec.angle()
-                stop_angle = 2 * math.pi - target_vec.angle()
+            if target_angle < position_angle:
+                start_angle = position_angle
+                stop_angle = 2 * math.pi - target_angle
             else:
-                start_angle = position_vec.angle()
-                stop_angle = target_vec.angle()
+                start_angle = position_angle
+                stop_angle = target_angle
         else:
             # G2 movement
             # so clockwise, step must be negative
@@ -396,37 +380,32 @@ cdef class Controller(object):
             # if not correct target_angle = 2 * math.pi - target_angle
             angle_step = -angle_step
             # should go from position to target
-            if target_vec.angle() > position_vec.angle():
-                start_angle = position_vec.angle()
-                stop_angle = 2 * math.pi - target_vec.angle()
+            if target_angle > position_angle:
+                start_angle = position_angle
+                stop_angle = 2 * math.pi - target_angle
             else:
-                start_angle = position_vec.angle()
-                stop_angle = target_vec.angle()
-        # this indicates a full circle
+                start_angle = position_angle
+                stop_angle = target_angle
+        # if start equals end this indicates a full circle
         if start_angle == stop_angle:
             stop_angle += math.pi * 2
-        angle_steps = abs(int((start_angle - stop_angle) / angle_step))
-        #logging.debug("Arc from %s rad to %s rad with %s steps in %s radians", start_angle, stop_angle, angle_steps, angle_step)
-        inv_offset = offset * -1
-        #logging.debug("Inverse Offset vector : %s", inv_offset)
+        # well done, positions and angle are known
+        # what is the stepsize in degree
+        cdef int angle_steps = abs(int((start_angle - stop_angle) / angle_step))
+        cdef object inv_offset = offset * -1
         angle = angle_step * angle_steps
-        cos_theta = math.cos(angle_step)
-        sin_theta = math.sin(angle_step)
+        cdef double cos_theta = math.cos(angle_step)
+        cdef double sin_theta = math.sin(angle_step)
         while abs(angle) > abs(angle_step):
             inv_offset = inv_offset.rotated_z_fast(angle_step, cos_theta, sin_theta)
             self.__goto(center + inv_offset)
             angle -= angle_step
-            #logging.debug("angle=%s, start_angle=%s, stop_angle=%s", start_angle + angle, start_angle, stop_angle)
         # rotate last tiny fraction left
         inv_offset = inv_offset.rotated_Z(angle_step)
         self.__goto(center + inv_offset)
-        # calculate drift of whole arc
-        arc_drift = self.position - target
-        #logging.debug("Arc-Drift: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, arc_drift, arc_drift.length())
-        # TODO: changed 19.03 assert arc_drift.length() < Point3d(1.0, 1.0, 1.0).length()
         self.__drift_management(target)
 
-    def __drift_management(self, target):
+    cdef __drift_management(self, object target):
         """
         can be called to get closer to target
         drift is calculated as vector between actual position and target
@@ -440,12 +419,7 @@ cdef class Controller(object):
             a second source of error will be floating point operations
         """
         drift = self.position - target
-        #logging.debug("Drift-Management-before: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
-        # TODO: changed 19.03 assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
         self.__goto(target)
-        drift = self.position - target
-        #logging.debug("Drift-Management-after: Actual=%s, Target=%s, Drift=%s(%s)", self.position, target, drift, drift.length())
-        assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
 
     cdef int __motor_steps(self, data):
         """
@@ -453,7 +427,6 @@ cdef class Controller(object):
         the size here is already steps, not units as mm or inches
         scaling is done in __goto
         """
-        #logging.debug("__step called with %s", args)
         cdef double step
         for axis in ("X", "Y", "Z"):
             step = data.get_axis(axis)
@@ -466,7 +439,6 @@ cdef class Controller(object):
         wrapper to get all method calles to external motor objects
         to implement caching, and advanced features
         """
-        #logging.debug("%s.%s(%s)", axis, function, args)
         method_to_call = getattr(self.motors[axis], function)
         self.__caller(method_to_call, *args)
 
@@ -475,7 +447,6 @@ cdef class Controller(object):
         wrapper to get all method calles to external spindle object
         to implement caching, and advanced features
         """
-        #logging.debug("spindle.%s(%s)", function, args)
         method_to_call = getattr(self.spindle, function)
         self.__caller(method_to_call, *args)
 
@@ -487,7 +458,6 @@ cdef class Controller(object):
 
         autorun=True version
         """
-        # logging.debug("caller(%s, %s)", method_to_call, args)
         self.commands.append((method_to_call, args))
         method_to_call(*args)
 
@@ -499,16 +469,15 @@ cdef class Controller(object):
         
         autrun=False version
         """
-        # logging.debug("caller(%s, %s)", method_to_call, args)
         self.commands.append((method_to_call, args))
 
-    def run(self):
+    cpdef run(self):
         """run all commands in self.commands"""
         for (method_to_call, args) in self.commands:
-            logging.info("calling %s(%s)", method_to_call.__name__, args)
+            # logging.debug("%s(%s)", method_to_call, args)
             method_to_call(*args)
 
-    cdef int __goto(self, object target):
+    cdef __goto(self, object target):
         """
         calculate vector between actual position and target position
         scale this vector to motor-steps-units und split the
@@ -540,19 +509,18 @@ cdef class Controller(object):
         self.__motor_steps(move_vec_steps)
         # set own position to target, done
         self.position = target
-        return(0)
 
-    def set_speed(self, *args):
+    cdef set_speed(self, dict data):
         """
         set speed, if data["F"] is given, defaults to default_speed if not specified
         speed is actually not implemented, everything at maximum speed
         """
-        if "F" in args[0]:
-            self.speed = args[0]["F"]
+        if "F" in data:
+            self.speed = data["F"]
         else: 
             self.speed = self.default_speed
 
-    def __linear_move_inc(self, *args):
+    def __linear_move_inc(self, data):
         """
         incremental movement, parameter represents relative position change
         move to given x,y ccordinates
@@ -561,17 +529,12 @@ cdef class Controller(object):
         so to move in both direction at the same time,
         parameter x or y has to be sometime float
         """
-        #logging.info("__linear_move_inc called with %s", args)
-        if args[0] is None: 
-            return
-        data = args[0]
-        target = Point3d(0, 0, 0)
+        cdef object target = Point3d(0, 0, 0)
         for axis in ("X", "Y", "Z"):
             if axis in data:
                 target.set_axis(axis, self.position.get_axis(axis) + data[axis])
             else:
                 target.set_axis(axis, self.position.get_axis(axis))
-        #logging.info("target = %s", target)
         self.__goto(target)
 
     def __linear_move_abs(self, data):
@@ -581,19 +544,13 @@ cdef class Controller(object):
         it is not necessary to give alle three axis, when no value is
         present, there is not movement on this axis
         """
-        #logging.info("__linear_move_abs called with %s", args)
-        #if args[0] is None: 
-        #    return
-        #data = args[0]
         target = Point3d(0.0, 0.0, 0.0)
         for axis in ("X", "Y", "Z"):
             if axis in data:
                 target.set_axis(axis, data[axis])
             else:
                 target.set_axis(axis, self.position.get_axis(axis))
-        #logging.info("target = %s", target)
         self.__goto(target)
-        return(0)
 
     def __getattr__(self, name):
         """handle unknwon methods"""

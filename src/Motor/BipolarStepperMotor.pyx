@@ -7,8 +7,6 @@
 Motor Classes for Controller
 """
 
-import logging
-logging.basicConfig(level=logging.INFO, format="%(message)s")
 import BaseMotor
 
 class BipolarStepperMotor(BaseMotor.BaseMotor):
