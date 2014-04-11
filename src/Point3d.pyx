@@ -3,6 +3,7 @@
 #
 # parse Gcode
 #
+#cython: profile=True
 
 from libc.math cimport sin, cos, acos, sqrt, M_PI
 

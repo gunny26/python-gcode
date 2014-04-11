@@ -3,6 +3,7 @@
 #
 # parse Gcode
 #
+#cython: profile=True
 """
 Motor Classes for Controller
 """

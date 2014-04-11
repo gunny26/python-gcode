@@ -126,7 +126,8 @@ def main():
         # start
         logging.info("Please move pen to left top corner, the origin")
         # key = raw_input("Press any KEY when done")
-        parser.read()
+        for _ in range(3):
+            parser.read()
     except ControllerExit as exc:
         logging.info(exc)
     except KeyboardInterrupt as exc:

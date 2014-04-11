@@ -89,6 +89,7 @@ cdef class Controller(object):
     cdef dict motors
     cdef list commands
     cdef object position, move, spindle, gui_cb, stats, transformer
+    cdef object __caller
 
     def __init__(self, double resolution, int default_speed, int autorun):
         """
@@ -105,6 +106,12 @@ cdef class Controller(object):
         self.default_speed = default_speed
         self.resolution = resolution
         self.autorun = autorun
+        # set function according to autorun or not,
+        # to prevent if switches in functions
+        if self.autorun is True:
+            self.__caller = self.__caller_autorun
+        else:
+            self.__caller = self.__caller_norun
         # initialize position
         self.position = Point3d(0, 0, 0)
         # defaults to absolute movements
@@ -156,13 +163,6 @@ cdef class Controller(object):
     def get_position(self):
         """return own position"""
         return(self.position)
-
-#    def get_direction(self, number):
-#        """
-#        helper class to get direction of number
-#        returns 1 for positive numbers, and -1 for negative numnbers
-#        """
-#        return(int(number/abs(number)))
 
     # GCommands
     # for every G-Command a method
@@ -317,17 +317,17 @@ cdef class Controller(object):
         # logging.error(self.stats)
         # raise ControllerExit("M30 received, end of program")
 
-    def __get_center(self, target, radius):
+    cdef object __get_center(self, object target, double radius):
         """
         helper method for G02 and G03 called to get center of arc
         get center from target on circle and radius given
         """
         logging.info("__get_center called with %s", (target, radius))
-        distance = target - self.position
+        cdef object distance = target - self.position
         # logging.info("x=%s, y=%s, r=%s", x, y, r)
-        h_x2_div_d = math.sqrt(4 * radius **2 - distance.X**2 - distance.Y**2) / math.sqrt(distance.X**2 + distance.Y**2)
-        i = (distance.X - (distance.Y * h_x2_div_d))/2
-        j = (distance.Y + (distance.X * h_x2_div_d))/2
+        cdef double h_x2_div_d = math.sqrt(4 * radius **2 - distance.X**2 - distance.Y**2) / math.sqrt(distance.X**2 + distance.Y**2)
+        cdef double i = (distance.X - (distance.Y * h_x2_div_d))/2
+        cdef double j = (distance.Y + (distance.X * h_x2_div_d))/2
         return(Point3d(i, j, 0.0))
 
     def __arc(self, *args):
@@ -454,16 +454,11 @@ cdef class Controller(object):
         scaling is done in __goto
         """
         #logging.debug("__step called with %s", args)
-        # data = args[0]
-        cdef int direction
         cdef double step
         for axis in ("X", "Y", "Z"):
             step = data.get_axis(axis)
-            assert -1.0 <= step <= 1.0
-            if step == 0.0 : 
-                continue
-            direction = int(step/abs(step))
-            self.__motor_caller(axis, "move_float", direction, abs(step))
+            if step != 0.0 : 
+                self.__motor_caller(axis, "move_float", 1 if step > 0.0 else -1, abs(step))
         # self.stats.update(self)
 
     def __motor_caller(self, str axis, str function, *args):
@@ -484,16 +479,28 @@ cdef class Controller(object):
         method_to_call = getattr(self.spindle, function)
         self.__caller(method_to_call, *args)
 
-    def __caller(self, method_to_call, *args):
+    def __caller_autorun(self, method_to_call, *args):
         """
         this is the only method which communicated with external objects
         like motors or spindles.
         this is the point to implement autorun
+
+        autorun=True version
         """
         # logging.debug("caller(%s, %s)", method_to_call, args)
         self.commands.append((method_to_call, args))
-        if self.autorun is True:
-            method_to_call(*args)
+        method_to_call(*args)
+
+    def __caller_norun(self, method_to_call, *args):
+        """
+        this is the only method which communicated with external objects
+        like motors or spindles.
+        this is the point to implement autorun
+        
+        autrun=False version
+        """
+        # logging.debug("caller(%s, %s)", method_to_call, args)
+        self.commands.append((method_to_call, args))
 
     def run(self):
         """run all commands in self.commands"""
@@ -501,50 +508,38 @@ cdef class Controller(object):
             logging.info("calling %s(%s)", method_to_call.__name__, args)
             method_to_call(*args)
 
-    cdef __goto(self, object target):
+    cdef int __goto(self, object target):
         """
         calculate vector between actual position and target position
         scale this vector to motor-steps-units und split the
         vector in unit vectors with length 1, to control single motor steps
         """
-        #logging.debug("__goto called with %s", target)
-        #logging.debug("moving from %s mm to %s mm", self.position, target)
-        #logging.debug("moving from %s steps to %s steps", self.position * self.resolution, target * self.resolution)
-        cdef object move_vec = target - self.position
-        if move_vec.length() == 0.0:
-            #logging.info("move_vec is zero, nothing to draw")
-            # no movement at all
-            return
-        # steps on each axes to move
-        # scale from mm to steps
-        cdef object move_vec_steps = move_vec * self.resolution
+        cdef object move_vec_steps
+        cdef object move_vec_steps_unit
+        cdef object move_vec
+        cdef double length
+        # nothing to move?
+        if target == self.position:
+            return(0)
+        else:
+            # vector from position to target in mm
+            move_vec = target - self.position
+        # scale from mm to steps unit 
+        move_vec_steps = move_vec * self.resolution
         # maybe some tranformation and scaling ?
         move_vec_steps = self.transformer.transform(move_vec_steps)
+        # and not get the unit vector, length=1
         move_vec_steps_unit = move_vec_steps.unit()
-        #logging.error("move_vec_steps_unit=%s", move_vec_steps_unit)
-        #logging.error("scaled %s mm to %s steps", move_vec, move_vec_steps)
-        #logging.error("move_vec_steps.length() = %s", move_vec_steps.length())        
         # use while loop the get to the exact value
-        while move_vec_steps.length() > 1.0:
+        length = move_vec_steps.length()
+        while length > 1.0:
             self.__motor_steps(move_vec_steps_unit)
-            #logging.error("actual length left to draw in tiny steps: %f", move_vec_steps.length())
+            length -= 1
             move_vec_steps = move_vec_steps - move_vec_steps_unit
         # the last fraction left
         self.__motor_steps(move_vec_steps)
-        #if self.surface is not None:
-        #    self.gui_cb(target)
+        # set own position to target, done
         self.position = target
-        # after move check controller position with motor positions
-        #motor_position = Point3d(self.motors["X"].get_position(), self.motors["Y"].get_position(), self.motors["Z"].get_position())
-        # drift = self.position * self.resolution - motor_position
-        #logging.debug("Target Drift: Actual=%s; Target=%s; Drift=%s", self.position, target, self.position - target)
-        #logging.debug("Steps-Drift : Motor=%s; Drift %s length=%s; Spindle: %s", \
-        #    motor_position, drift, drift.length(), self.spindle.get_state())
-        # drift should not be more than 1 step
-        # drift could be in any direction 0.999...
-        # assert drift.length() < Point3d(1.0, 1.0, 1.0).length()
-        #logging.info("Unit-Drift: Motor: %s; Drift %s; Spindle: %s", \
-        #    motor_position / self.resolution, self.position - motor_position / self.resolution, self.spindle.get_state())
         return(0)
 
     def set_speed(self, *args):
@@ -579,7 +574,7 @@ cdef class Controller(object):
         #logging.info("target = %s", target)
         self.__goto(target)
 
-    def __linear_move_abs(self, *args):
+    def __linear_move_abs(self, data):
         """
         absolute movement to position
         args[X,Y,Z] are interpreted as absolute positions
@@ -587,9 +582,9 @@ cdef class Controller(object):
         present, there is not movement on this axis
         """
         #logging.info("__linear_move_abs called with %s", args)
-        if args[0] is None: 
-            return
-        data = args[0]
+        #if args[0] is None: 
+        #    return
+        #data = args[0]
         target = Point3d(0.0, 0.0, 0.0)
         for axis in ("X", "Y", "Z"):
             if axis in data:
@@ -598,6 +593,7 @@ cdef class Controller(object):
                 target.set_axis(axis, self.position.get_axis(axis))
         #logging.info("target = %s", target)
         self.__goto(target)
+        return(0)
 
     def __getattr__(self, name):
         """handle unknwon methods"""
