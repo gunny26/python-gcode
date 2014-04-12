@@ -30,7 +30,6 @@ extensions = [
     Extension("FakeGPIO", ["src/GPIOObject/FakeGPIO.pyx"], extra_compile_args=extra_compile_args),
     Extension("GPIOWrapper", ["src/GPIOObject/GPIOWrapper.pyx"], extra_compile_args=extra_compile_args),
     Extension("Transformer", ["src/Transformer/Transformer.pyx"], extra_compile_args=extra_compile_args),
-    Extension("GcodeGuiConsole", ["src/GcodeGuiConsole.pyx"], extra_compile_args=extra_compile_args),
 ]
 
 setup(

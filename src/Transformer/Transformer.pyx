@@ -22,15 +22,21 @@ cdef class Transformer(object):
     """
 
     cdef float scale
+    cdef object gui_cb
 
     def __init__(self, float scale=1.0):
         self.scale = scale
+        self.gui_cb = None
+
+    cpdef int set_gui_cb(self, gui_cb):
+        self.gui_cb = gui_cb
 
     cpdef object transform(self, object data):
         """
         this is only generic tranformer with no action
         """
         #logging.debug("transform called with %s", data)
+        self.gui_cb(data, data)
         return(data)
 
 
@@ -114,4 +120,5 @@ cdef class PlotterTransformer(Transformer):
         self.offset_b = b
         self.zero_a += l_a
         self.zero_b += l_b
+        self.gui_cb(data, transformed)
         return(transformed)

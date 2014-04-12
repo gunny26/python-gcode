@@ -37,7 +37,7 @@ is needed to calculate from X/Y motions to a/b motions.
 import sys
 import math
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 # FakeGPIO or real one, depends on hardware
 from FakeGPIO import FakeGPIO as GPIO
 #try:
@@ -58,8 +58,8 @@ from UnipolarStepperMotor import UnipolarStepperMotor as UnipolarStepperMotor
 from BaseSpindle import BaseSpindle as BaseSpindle
 from Controller import Controller as Controller
 from Transformer import PlotterTransformer as PlotterTransformer
-from PlotterSimulator import PlotterSimulator as PlotterSimulator
-from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
+#from PlotterSimulator import PlotterSimulator as PlotterSimulator
+from GuiConsole import GuiConsole as GuiConsole
 
 def main(): 
     # if no parameter option is given, default to example gcode
@@ -109,7 +109,8 @@ def main():
         controller.add_motor("Y", motor_y)
         controller.add_motor("Z", motor_z)
         controller.add_spindle(BaseSpindle()) # generic spindle object
-        controller.add_transformer(PlotterTransformer(width=830, scale=15.0, ca_zero=320, h_zero=140)) # transformer for plotter usage
+        transformer = PlotterTransformer(width=830, scale=15.0, ca_zero=320, h_zero=140) # transformer for plotter usage
+        controller.add_transformer(transformer) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
         parser = Parser(filename=sys.argv[1], autorun=False)
@@ -117,12 +118,13 @@ def main():
         # create gui
         logging.info("Creating GUI")
         # gui = PlotterSimulator(automatic=True)
-        gui = GcodeGuiConsole()
+        gui = GuiConsole()
         # connect gui with parser and controller
         gui.set_controller(controller)
-        controller.set_gui_cb(gui.controller_cb)
         gui.set_parser(parser)
+        controller.set_gui_cb(gui.controller_cb)
         parser.set_gui_cb(gui.parser_cb)
+        transformer.set_gui_cb(gui.transformer_cb)
         # start
         logging.info("Please move pen to left top corner, the origin")
         # key = raw_input("Press any KEY when done")
@@ -132,6 +134,7 @@ def main():
         parser.run()
         logging.error("controller calculations done, calling physical world")
         controller.run()
+        gui.quit()
     except ControllerExit as exc:
         logging.info(exc)
     except KeyboardInterrupt as exc:
@@ -142,6 +145,8 @@ def main():
     GPIO.cleanup()
 
 if __name__ == "__main__":
+    main()
+    sys.exit(0)
     import cProfile
     import pstats
     profile = "Plotter.profile"

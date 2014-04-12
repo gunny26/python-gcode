@@ -20,13 +20,10 @@ cdef class Parser(object):
 
     cdef str filename
     cdef int autorun
-    cdef object last_g_code
-    cdef tuple g_params
-    cdef dict rex_g
     cdef object controller
     cdef object gui_cb
-    cdef str command
     cdef list calls
+    cdef public str last_g_code
 
     def __init__(self, str filename, int autorun):
         """
@@ -38,17 +35,10 @@ cdef class Parser(object):
         self.filename = filename
         self.autorun = autorun
         # last known g code
-        self.last_g_code = None
-        # precompile regular expressions
-        self.rex_g = {}
-        self.g_params = ("X", "Y", "Z", "I", "J", "K", "P", "R", "K", "U", "V", "W", "A", "B", "C")
-        for g_param in self.g_params:
-            self.rex_g[g_param] = re.compile("(%s[\+\-]?[\d\.]+)\D?" % g_param)
+        self.last_g_code = ""
         # initial values
         self.controller = None
         self.gui_cb = None
-        # save actual commands on this line
-        self.command = None
         # call list
         self.calls = []
 
@@ -74,14 +64,12 @@ cdef class Parser(object):
         for example G02 results in call of self.controller.G02(args)
         """
         # logging.debug("calling %s(%s)", methodname, args)
-        self.command = "%s(%s)" % (methodname, args)
-        # update gui object
-        # self.gui_cb()
         method_to_call = getattr(self.controller, methodname)
         self.calls.append((method_to_call, args, methodname))
         # method_to_call(args)
         if methodname[0] == "G":
             self.last_g_code = methodname
+        self.gui_cb()
         return(0)
 
     cpdef int run(self):
@@ -97,6 +85,11 @@ cdef class Parser(object):
         """
         fd = os.open(self.filename, os.O_RDONLY)
         f = os.fdopen(fd, "r")
+        # precompile regular expressions
+        cdef dict rex_g = {}
+        cdef set g_params = set(("X", "Y", "Z", "I", "J", "K", "P", "R", "K", "U", "V", "W", "A", "B", "C"))
+        for g_param in g_params:
+            rex_g[g_param] = re.compile("(%s[\+\-]?[\d\.]+)\D?" % g_param)
         # regex compilation
         codes_rex = re.compile("([F|S|T][\d|\.]+)\D?")
         gcodes_rex = re.compile("([G|M][\d|\.]+)\D?")
@@ -125,8 +118,8 @@ cdef class Parser(object):
             # search for M-Codes
             # Feed Rate has precedence over G
             params = {}
-            for parameter in self.g_params:
-                match = self.rex_g[parameter].search(line)
+            for parameter in g_params:
+                match = rex_g[parameter].search(line)
                 if match:
                     params[parameter] = float(match.group(1)[1:])
                     line = line.replace(match.group(1), "")

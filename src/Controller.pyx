@@ -25,52 +25,6 @@ class ControllerCommandNotImplemented(Exception):
         Exception.__init__(self, *args)
 
 
-cdef class ControllerStats(object):
-    """
-    Object to hold some statistical informations about Controller
-    should be called on every step made
-    """
-    cdef int steps
-    cdef double max_x, min_x, max_y, min_y, max_z, min_z, start_time, duration, avg_step_time
-
-    def __init__(self):
-        """__init__"""
-        self.steps = 0
-        self.max_x = 0.0
-        self.min_x = 0.0
-        self.max_y = 0.0
-        self.min_y = 0.0
-        self.max_z = 0.0
-        self.min_z = 0.0
-        self.start_time = time.time()
-        self.duration = 0.0
-        self.avg_step_time = 0.0
-
-    cpdef int update(self, object controller_obj):
-        """update internal stats counters"""
-        # store min / max for X/Y/Z Axis
-        if controller_obj.position.X > self.max_x:
-            self.max_x = controller_obj.position.X
-        if controller_obj.position.X < self.min_x:
-            self.min_x = controller_obj.position.X
-        if controller_obj.position.Y > self.max_y:
-            self.max_y = controller_obj.position.Y
-        if controller_obj.position.Y < self.min_y:
-            self.min_y = controller_obj.position.Y
-        if controller_obj.position.Z > self.max_z:
-            self.max_z = controller_obj.position.Z
-        if controller_obj.position.X < self.min_z:
-            self.min_z = controller_obj.position.Z
-        # store steps and time
-        self.steps += 1
-        self.duration = time.time() - self.start_time
-        self.avg_step_time = self.duration / self.steps
-        return(0)
-
-    def __str__(self):
-        return(str(self.__dict__))
-
-
 cdef class Controller(object):
     """
     Class to receive Gcode Commands and Statements and translate
@@ -85,10 +39,11 @@ cdef class Controller(object):
     cdef double resolution, angle_step, angle_step_sin, angle_step_cos
     cdef double feed, default_speed, speed
     cdef int autorun, tool
-    cdef dict motors
     cdef list commands
-    cdef object position, spindle, gui_cb, stats, transformer
+    cdef object spindle, gui_cb, transformer
     cdef object __caller, __linear_move
+    cdef public dict motors
+    cdef public object position
 
     def __init__(self, double resolution, int default_speed, int autorun):
         """
@@ -132,8 +87,6 @@ cdef class Controller(object):
         self.angle_step = math.pi / 180 
         self.angle_step_sin = math.sin(self.angle_step)
         self.angle_step_cos = math.cos(self.angle_step)
-        # statistics
-        self.stats = ControllerStats()
         # optional a tranforming function
         self.transformer = None
         # list of motor commands
@@ -432,7 +385,6 @@ cdef class Controller(object):
             step = data.get_axis(axis)
             if step != 0.0 : 
                 self.__motor_caller(axis, "move_float", 1 if step > 0.0 else -1, abs(step))
-        # self.stats.update(self)
 
     def __motor_caller(self, str axis, str function, *args):
         """
@@ -458,6 +410,7 @@ cdef class Controller(object):
 
         autorun=True version
         """
+        self.gui_cb()
         self.commands.append((method_to_call, args))
         method_to_call(*args)
 
@@ -469,6 +422,7 @@ cdef class Controller(object):
         
         autrun=False version
         """
+        self.gui_cb()
         self.commands.append((method_to_call, args))
 
     cpdef run(self):
@@ -493,10 +447,10 @@ cdef class Controller(object):
         else:
             # vector from position to target in mm
             move_vec = target - self.position
+        # maybe some tranformation and scaling ?
+        move_vec = self.transformer.transform(move_vec)
         # scale from mm to steps unit 
         move_vec_steps = move_vec * self.resolution
-        # maybe some tranformation and scaling ?
-        move_vec_steps = self.transformer.transform(move_vec_steps)
         # and not get the unit vector, length=1
         move_vec_steps_unit = move_vec_steps.unit()
         # use while loop the get to the exact value
