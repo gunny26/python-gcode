@@ -18,17 +18,9 @@ also Motor Power has to be connected
 VMOT > 8V - 32V
 GND -> GND
 """
-import pyximport
-#pyximport.install(pyimport = True) # if you want to compile every py file
-pyximport.install()
 import logging
 logging.basicConfig(level=logging.DEBUG)
-# from RPi import GPIO
-# use own GPIO implementation
-#from GpioObject import GpioObject
-#GPIO = GpioObject(0)
 from RPi import GPIO
-
 from GPIOWrapper import GPIOWrapper as gpio
 from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftGPIOWrapper import ShiftGPIOWrapper as ShiftGPIOWrapper
@@ -103,7 +95,7 @@ if __name__ == "__main__":
     DIRECTION = bool(sys.argv[1])
     STEP_INTERVAL = float(sys.argv[2])
     DURATION_S = int(sys.argv[3])
-    profile = "test_a4988_shift.profile"
+    profile = "profiles/%s.profile" % sys.argv[0].split(".")[0]
     cProfile.runctx("main()", globals(), locals(), filename=profile)
     s = pstats.Stats(profile)
     s.sort_stats("time")

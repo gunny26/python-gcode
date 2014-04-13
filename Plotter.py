@@ -28,25 +28,17 @@ on the area.
 Normally any gcode is written for linear X/Y machine, so a special tranformer
 is needed to calculate from X/Y motions to a/b motions.
 """
-# cython imports, if installed
-#try:
-#    import pyximport
-#    pyximport.install()
-#except ImportError:
-#    pass
 import sys
 import math
 import logging
 logging.basicConfig(level=logging.ERROR)
 # FakeGPIO or real one, depends on hardware
 from FakeGPIO import FakeGPIO as GPIO
-#try:
-#    import RPi.GPIO as GPIO
-    # from GpioObject import GpioObject
-    # GPIO = GpioObject()
-#except ImportError:
-#    logging.error("Semms not to be a RaspberryPi")
-#    from  FakeGPIO import FakeGPIO as GPIO
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    logging.error("Semms not to be a RaspberryPi")
+    from  FakeGPIO import FakeGPIO as GPIO
 # own modules
 # GPIO Warpper, object interface to GPIO Ports
 from GPIOWrapper import GPIOWrapper as gpio
@@ -62,9 +54,6 @@ from Transformer import PlotterTransformer as PlotterTransformer
 from GuiConsole import GuiConsole as GuiConsole
 
 def main(): 
-    # if no parameter option is given, default to example gcode
-    if len(sys.argv) == 1:
-        sys.argv.append("examples/tiroler_adler.ngc")
     # bring GPIO to a clean state
     try:
         GPIO.cleanup_existing()
@@ -100,9 +89,9 @@ def main():
         logging.info("Initialize GPIO Modes")
         # build our controller
         logging.info("Creating Controller Object")
-        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.0)
-        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.0)
-        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=9999, min_position=-9999, delay=0.0, sos_exception=False)
+        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.01)
+        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.01)
+        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=9999, min_position=-9999, delay=0.01, sos_exception=False)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, autorun=False)
         controller.add_motor("X", motor_x)
@@ -113,7 +102,7 @@ def main():
         controller.add_transformer(transformer) # transformer for plotter usage
         # create parser
         logging.info("Creating Parser Object")
-        parser = Parser(filename=sys.argv[1], autorun=False)
+        parser = Parser(filename=FILENAME, autorun=False)
         parser.set_controller(controller)
         # create gui
         logging.info("Creating GUI")
@@ -145,11 +134,14 @@ def main():
     GPIO.cleanup()
 
 if __name__ == "__main__":
+    FILENAME = "examples/tiroler_adler.ngc"
+    if len(sys.argv) == 2:
+        FILENAME = sys.argv[1]
     main()
     sys.exit(0)
     import cProfile
     import pstats
-    profile = "Plotter.profile"
+    profile = "profiles/%s.profile" % sys.argv[0].split(".")[0]
     cProfile.runctx( "main()", globals(), locals(), filename=profile)
     s = pstats.Stats(profile)
     s.sort_stats('time')
