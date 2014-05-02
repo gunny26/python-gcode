@@ -19,26 +19,26 @@ import sys
 import logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 try:
-    #import RPi.GPIO as GPIO
-    from GpioObject import GpioObject
-    GPIO = GpioObject(GpioObject.BOARD)
+    import RPi.GPIO as GPIO
+    #import GpioObject
+    #GPIO = GpioObject(GpioObject.BOARD)
 except ImportError:
     logging.error("Semms not to be a RaspberryPi")
-    from  FakeGPIO import FakeGPIO as GPIO
+    import FakeGPIO as GPIO
 # own modules
-from FakeGPIO import GPIOWrapper as gpio
+from GPIOWrapper import GPIOWrapper as gpio
 #from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
-from LaserSimulator import LaserSimulator as LaserSimulator
+from LaserSimulator import LaserSimulator
 # from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
-from Parser import Parser as Parser
-from Controller import ControllerExit as ControllerExit
-from Motor import BipolarStepperMotor as BipolarStepperMotor
-from Motor import LaserMotor as LaserMotor
-from Spindle import Spindle as Spindle
-from Controller import Controller as Controller
-from Transformer import Transformer as Transformer
+from Parser import Parser
+#import ControllerExit
+from BipolarStepperMotor import BipolarStepperMotor
+from LaserMotor import LaserMotor
+from BaseSpindle import BaseSpindle
+from Controller import Controller
+from Transformer import Transformer
 
 def main(): 
     if len(sys.argv) == 1:

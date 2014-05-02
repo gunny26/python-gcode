@@ -428,7 +428,7 @@ cdef class Controller(object):
     cpdef run(self):
         """run all commands in self.commands"""
         for (method_to_call, args) in self.commands:
-            # logging.debug("%s(%s)", method_to_call, args)
+            logging.debug("%s(%s)", method_to_call, args)
             method_to_call(*args)
 
     cdef __goto(self, object target):

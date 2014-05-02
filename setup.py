@@ -10,8 +10,8 @@ directive_defaults['profile'] = False
 # extra compile flags
 extra_compile_args = ["-O3"]
 
-sys.argv.append("build_ext")
-sys.argv.append("--inplace")
+#sys.argv.append("build_ext")
+#sys.argv.append("--inplace")
 
 extensions = [
     Extension("Controller", ["src/Controller.pyx"], extra_compile_args=extra_compile_args),

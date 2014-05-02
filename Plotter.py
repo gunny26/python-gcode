@@ -31,9 +31,7 @@ is needed to calculate from X/Y motions to a/b motions.
 import sys
 import math
 import logging
-logging.basicConfig(level=logging.ERROR)
-# FakeGPIO or real one, depends on hardware
-from FakeGPIO import FakeGPIO as GPIO
+logging.basicConfig(level=logging.INFO)
 try:
     import RPi.GPIO as GPIO
 except ImportError:
@@ -46,6 +44,7 @@ from ShiftRegister import ShiftRegister as ShiftRegister
 from ShiftGPIOWrapper import ShiftGPIOWrapper as ShiftGPIOWrapper
 from Parser import Parser as Parser
 from Controller import ControllerExit as ControllerExit
+from A5988DriverMotor import A5988DriverMotor as A5988DriverMotor
 from UnipolarStepperMotor import UnipolarStepperMotor as UnipolarStepperMotor
 from BaseSpindle import BaseSpindle as BaseSpindle
 from Controller import Controller as Controller
@@ -71,27 +70,42 @@ def main():
     shift_register = ShiftRegister(ser, rclk, srclk, 16, autocommit=True)
     # and we use a fake GPIO Object to use ShiftRegister instead
     # Motor A left upper corner
-    m_a_a1 = ShiftGPIOWrapper(shift_register, 0)
-    m_a_a2 = ShiftGPIOWrapper(shift_register, 1)
-    m_a_b1 = ShiftGPIOWrapper(shift_register, 2)
-    m_a_b2 = ShiftGPIOWrapper(shift_register, 3)
+    m_a_dir = ShiftGPIOWrapper(shift_register, 0)
+    m_a_step = ShiftGPIOWrapper(shift_register, 1)
+    m_a_enable = ShiftGPIOWrapper(shift_register, 2)
     # motor B, should be reversed to A
-    m_b_a1 = ShiftGPIOWrapper(shift_register, 6)
-    m_b_a2 = ShiftGPIOWrapper(shift_register, 7)
-    m_b_b1 = ShiftGPIOWrapper(shift_register, 4)
-    m_b_b2 = ShiftGPIOWrapper(shift_register, 5)
+    m_b_dir = ShiftGPIOWrapper(shift_register, 3)
+    m_b_step = ShiftGPIOWrapper(shift_register, 4)
+    m_b_enable = ShiftGPIOWrapper(shift_register, 5)
     # Motor C Penholder
-    m_c_a1 = ShiftGPIOWrapper(shift_register, 8)
-    m_c_a2 = ShiftGPIOWrapper(shift_register, 9)
-    m_c_b1 = ShiftGPIOWrapper(shift_register, 10)
-    m_c_b2 = ShiftGPIOWrapper(shift_register, 11)
+    m_c_dir = ShiftGPIOWrapper(shift_register, 6)
+    m_c_step = ShiftGPIOWrapper(shift_register, 7)
+    m_c_enable = ShiftGPIOWrapper(shift_register, 8)
     try:
         logging.info("Initialize GPIO Modes")
         # build our controller
         logging.info("Creating Controller Object")
-        motor_x = UnipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=9999, min_position=-9999, delay=0.01)
-        motor_y = UnipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=9999, min_position=-9999, delay=0.01)
-        motor_z = UnipolarStepperMotor(coils=(m_c_a1, m_c_a2, m_c_b1, m_c_b2), max_position=9999, min_position=-9999, delay=0.01, sos_exception=False)
+        motor_x = A5988DriverMotor(
+            enable_pin=m_a_enable,
+            dir_pin=m_a_dir,
+            step_pin=m_a_step, 
+            max_position=9999, 
+            min_position=-9999, 
+            delay=0.05)
+        motor_y = A5988DriverMotor(
+            enable_pin=m_b_enable,
+            dir_pin=m_b_dir,
+            step_pin=m_b_step, 
+            max_position=9999, 
+            min_position=-9999, 
+            delay=0.05)
+        motor_z = A5988DriverMotor(
+            enable_pin=m_c_enable,
+            dir_pin=m_c_dir,
+            step_pin=m_c_step, 
+            max_position=9999, 
+            min_position=-9999, 
+            delay=0.05)
         # one turn is 8 mm * pi in 48 steps, motor and screw specifications
         controller = Controller(resolution=8 * math.pi / 48, default_speed=1.0, autorun=False)
         controller.add_motor("X", motor_x)
@@ -124,8 +138,6 @@ def main():
         logging.error("controller calculations done, calling physical world")
         controller.run()
         gui.quit()
-    except ControllerExit as exc:
-        logging.info(exc)
     except KeyboardInterrupt as exc:
         logging.info(exc)
     except StandardError as exc:

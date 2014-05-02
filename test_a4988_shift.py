@@ -6,8 +6,8 @@ only two control pins are needed
 
 DIR -> to set direction
 STEP -> to send impulses to step
+ENABLED -> active LOW
 
-ENABLED -> GND
 RESET -> GND
 SLEEP -> GND
 
@@ -53,14 +53,21 @@ def main():
     # driver 1 dir and step
     d_1_dir_pin = ShiftGPIOWrapper(shift_register, 0)
     d_1_step_pin = ShiftGPIOWrapper(shift_register, 1)
+    d_1_enable_pin = ShiftGPIOWrapper(shift_register, 2)
     # driver 2 dir and step
-    d_2_dir_pin = ShiftGPIOWrapper(shift_register, 2)
-    d_2_step_pin = ShiftGPIOWrapper(shift_register, 3)
+    d_2_dir_pin = ShiftGPIOWrapper(shift_register, 3)
+    d_2_step_pin = ShiftGPIOWrapper(shift_register, 4)
+    d_2_enable_pin = ShiftGPIOWrapper(shift_register, 5)
     # driver 3 dir and step
-    d_3_dir_pin = ShiftGPIOWrapper(shift_register, 4)
-    d_3_step_pin = ShiftGPIOWrapper(shift_register, 5)
+    d_3_dir_pin = ShiftGPIOWrapper(shift_register, 6)
+    d_3_step_pin = ShiftGPIOWrapper(shift_register, 7)
+    d_3_enable_pin = ShiftGPIOWrapper(shift_register, 8)
     
     steps = 0
+    # ENABLE PIN is active LOW
+    d1.enable_pin.output(0)
+    d2.enable_pin.output(0)
+    d3.enable_pin.output(0)
 
     try:
         d_1_dir_pin.output(DIRECTION)

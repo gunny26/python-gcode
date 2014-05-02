@@ -30,7 +30,7 @@ cdef class BaseMotor(object):
     cdef double float_position
     cdef double last_step_time
 
-    def __init__(self, max_position, min_position, delay, sos_exception):
+    def __init__(self, int max_position, int min_position, double delay, int sos_exception):
         """
         max_position -> the maximum position this motor should reach in steps
         min_position -> the minimum position this motor should reach in steps

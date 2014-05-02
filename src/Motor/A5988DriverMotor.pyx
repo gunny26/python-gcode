@@ -7,6 +7,7 @@
 Motor Classes for Controller
 """
 
+import time
 import BaseMotor
 
 class A5988DriverMotor(BaseMotor.BaseMotor):
@@ -16,19 +17,26 @@ class A5988DriverMotor(BaseMotor.BaseMotor):
 
     dir
     step
+    enable
+
+    reset should be wired to low
+    sense should be wired to low
     """
 
-    def __init__(self, int step_pin, int dir_pin, int max_position, int min_position, int delay, bint sos_exception=False):
+    def __init__(self, step_pin, dir_pin, enable_pin, int max_position, int min_position, double delay, int sos_exception=False):
         """
-        coils a set of for GPIO like object to represent a1, a2, b1, b2 connection to motor
+        this is a direction and step interface
+
         max_position
         min_position
         delay between phase changes in seconds
         """
-        super().__init__(self, max_position, min_position, delay, sos_exception)
+        BaseMotor.BaseMotor.__init__(self, max_position, min_position, delay, sos_exception)
+        self.enable_pin = enable_pin
         self.step_pin = step_pin
         self.dir_pin = dir_pin
-        self.unhold()
+        # power on
+        self.enable()
 
     def _move(self, int direction):
         """
@@ -41,12 +49,20 @@ class A5988DriverMotor(BaseMotor.BaseMotor):
         else:
             self.dir_pin.output(0)
         # driver triggers LOW - HIGH impulse
-        self.step_pin.output(0)
         self.step_pin.output(1)
+        # duty cycle of 1ms to hold high level of pulse
+        time.sleep(0.001)
+        self.step_pin.output(0)
 
     def unhold(self):
         """
         TODO: sleep or enable pin should be set on this function,
         to power off stepper motors
         """
-        pass
+        self.enable_pin.output(1)
+
+    def enable(self):
+        """
+        set enable to low to activate driver board
+        """
+        self.enable_pin.output(0)
