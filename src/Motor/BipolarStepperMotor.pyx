@@ -54,7 +54,7 @@ class BipolarStepperMotor(BaseMotor.BaseMotor):
         max_position
         min_position
         """
-        super().__init__(self, max_position, min_position, delay, sos_exception)
+        BaseMotor.BaseMotor.__init__(self, max_position, min_position, delay, sos_exception)
         self.coils = coils
         # define coil pins as output
         self.num_sequence = len(self.SEQUENCE)

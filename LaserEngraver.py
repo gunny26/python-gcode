@@ -30,16 +30,17 @@ from GPIOWrapper import GPIOWrapper as gpio
 #from GcodeGuiTkinter import GcodeGuiTkinter as GcodeGuiTkinter
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
 #from GcodeGuiPygame import GcodeGuiPygame as GcodeGuiPygame
-from LaserSimulator import LaserSimulator
-# from GcodeGuiConsole import GcodeGuiConsole as GcodeGuiConsole
+#from LaserSimulator import LaserSimulator
+from GuiConsole import GuiConsole as GuiConsole
 from Parser import Parser
 #import ControllerExit
-from BipolarStepperMotor import BipolarStepperMotor
+from StepDirMotor import StepDirMotor
 from LaserMotor import LaserMotor
 from BaseSpindle import BaseSpindle
 from Controller import Controller
 from Transformer import Transformer
 
+GPIO.OUT
 def main(): 
     if len(sys.argv) == 1:
         sys.argv.append("examples/tiroler_adler.ngc")
@@ -47,26 +48,26 @@ def main():
     # bring GPIO to a clean state
     try:
         GPIO.cleanup_existing()
+        GPIO.setmode(GPIO.BOARD)
     except AttributeError:
         pass
-    GPIO.setmode(GPIO.BOARD)
     # define GPIO Pins to use
     enable_pin = gpio(23, GPIO)
     enable_pin.setup(GPIO.OUT)
     laser_pin = gpio(14, GPIO)
     laser_pin.setup(GPIO.OUT)
-    m_a_a1 = gpio(4, GPIO)
-    m_a_a1.setup(GPIO.OUT)
-    m_a_a2 = gpio(2, GPIO)
-    m_a_a2.setup(GPIO.OUT)
-    m_a_b1 = gpio(27, GPIO)
-    m_a_b1.setup(GPIO.OUT)
-    m_a_b2 = gpio(22, GPIO)
-    m_a_b2.setup(GPIO.OUT)
-    m_b_a1 = gpio(24, GPIO)
-    m_b_a1.setup(GPIO.OUT)
-    m_b_a2 = gpio(25, GPIO)
-    m_b_a2.setup(GPIO.OUT)
+    m_x_step = gpio(4, GPIO)
+    m_x_step.setup(GPIO.OUT)
+    m_x_dir = gpio(2, GPIO)
+    m_x_dir.setup(GPIO.OUT)
+    m_x_enable = gpio(27, GPIO)
+    m_x_enable.setup(GPIO.OUT)
+    m_y_step = gpio(22, GPIO)
+    m_y_step.setup(GPIO.OUT)
+    m_y_dir = gpio(24, GPIO)
+    m_y_dir.setup(GPIO.OUT)
+    m_y_enable = gpio(25, GPIO)
+    m_y_enable.setup(GPIO.OUT)
     m_b_b1 = gpio(7, GPIO)
     m_b_b1.setup(GPIO.OUT)
     m_b_b2 = gpio(8, GPIO)
@@ -80,10 +81,11 @@ def main():
     # build our controller
     logging.info("Creating Controller Object")
     controller = Controller(resolution=512/36, default_speed=1.0, autorun=False)
-    controller.add_motor("X", BipolarStepperMotor(coils=(m_a_a1, m_a_a2, m_a_b1, m_a_b2), max_position=512, min_position=0, delay=0.002))
-    controller.add_motor("Y", BipolarStepperMotor(coils=(m_b_a1, m_b_a2, m_b_b1, m_b_b2), max_position=512, min_position=0, delay=0.002))
+    # step_pin, dir_pin, enable_pin, int max_position, int min_position, double delay, int sos_exception=False
+    controller.add_motor("X", StepDirMotor(m_x_step, m_x_dir, m_x_enable, max_position=512, min_position=0, delay=0.002))
+    controller.add_motor("Y", StepDirMotor(m_y_step, m_y_dir, m_y_enable, max_position=512, min_position=0, delay=0.002))
     controller.add_motor("Z", LaserMotor(laser_pin=laser_pin, min_position=-10000, max_position=10000, delay=0.00))
-    controller.add_spindle(Spindle())
+    controller.add_spindle(BaseSpindle())
     controller.add_transformer(Transformer())
     # create parser
     logging.info("Creating Parser Object")
@@ -91,8 +93,8 @@ def main():
     parser.set_controller(controller)
     # create gui
     logging.info("Creating GUI")
-    gui = LaserSimulator(automatic=True, zoom=10.0, controller=controller, parser=parser)
-    # gui = GcodeGuiConsole()
+    # gui = LaserSimulator(automatic=True, zoom=10.0, controller=controller, parser=parser)
+    gui = GuiConsole()
     controller.set_gui_cb(gui.controller_cb)
     parser.set_gui_cb(gui.parser_cb)
     # start

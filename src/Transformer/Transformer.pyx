@@ -39,6 +39,12 @@ cdef class Transformer(object):
         self.gui_cb(data, data)
         return(data)
 
+    cpdef get_scale(self):
+        return(self.scale)
+
+    cpdef float set_scale(self, float scale):
+        self.scale = scale
+
 
 cdef class PlotterTransformer(Transformer):
     """class to transfor from motor steps to other steps"""

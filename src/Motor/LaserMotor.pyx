@@ -15,14 +15,14 @@ import BaseMotor
 class LaserMotor(BaseMotor.BaseMotor):
     """Laser Motor, reactive if axis moves negative"""
 
-    def __init__(self, laser_pin, max_position, min_position, delay):
+    def __init__(self, laser_pin, max_position, min_position, delay, sos_exception=False):
         """
         GPIO like Object for laser_pin
         max_position value
         min_position value
         delay between phase changes
         """
-        super().__init__(self, max_position, min_position, delay)
+        BaseMotor.BaseMotor.__init__(self, max_position, min_position, delay, sos_exception)
         self.laser_pin = laser_pin
         self.unhold()
  

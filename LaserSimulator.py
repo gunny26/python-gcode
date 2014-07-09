@@ -72,7 +72,7 @@ class LaserSimulator(threading.Thread):
     def set_controller(self, controller):
         """called to set controller object"""
         self.controller = controller
-        self.draw_scale = controller.transformer.scale
+        self.draw_scale = controller.transformer.get_scale()
         self.new_position = (0, 0)
         self.old_position = self.new_position
 

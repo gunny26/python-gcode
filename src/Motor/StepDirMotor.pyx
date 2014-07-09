@@ -10,17 +10,16 @@ Motor Classes for Controller
 import time
 import BaseMotor
 
-class A5988DriverMotor(BaseMotor.BaseMotor):
+class StepDirMotor(BaseMotor.BaseMotor):
     """
-    This Motor is connected to a a4988 driver, which only needs two pins
-    to control the motor
+    General Class to work with STEP DIR Pin drivers like
+    A4988/EasyDriver/RAMPS Boards and so on
 
-    dir
-    step
-    enable
+    usually these drivers have following PINS
 
-    reset should be wired to low
-    sense should be wired to low
+    STEP
+    DIR
+    ENABLE
     """
 
     def __init__(self, step_pin, dir_pin, enable_pin, int max_position, int min_position, double delay, int sos_exception=False):

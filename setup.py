@@ -8,7 +8,7 @@ from Cython.Compiler.Options import directive_defaults
 directive_defaults['profile'] = False
 
 # extra compile flags
-extra_compile_args = ["-O3"]
+extra_compile_args = ["-O0"]
 
 #sys.argv.append("build_ext")
 #sys.argv.append("--inplace")
@@ -20,6 +20,7 @@ extensions = [
     Extension("BipolarStepperMotor", ["src/Motor/BipolarStepperMotor.pyx"], extra_compile_args=extra_compile_args),
     Extension("LaserMotor", ["src/Motor/LaserMotor.pyx"], extra_compile_args=extra_compile_args),
     Extension("A5988DriverMotor", ["src/Motor/A5988DriverMotor.pyx"], extra_compile_args=extra_compile_args),
+    Extension("StepDirMotor", ["src/Motor/StepDirMotor.pyx"], extra_compile_args=extra_compile_args),
     Extension("Parser", ["src/Parser.pyx"], extra_compile_args=extra_compile_args),
     Extension("Point3d", ["src/Point3d.pyx"], extra_compile_args=extra_compile_args),
     Extension("LaserSpindle", ["src/Spindle/LaserSpindle.pyx"], extra_compile_args=extra_compile_args),
